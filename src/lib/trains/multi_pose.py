@@ -31,8 +31,8 @@ class MultiPoseLoss(torch.nn.Module):
     for s in range(opt.num_stacks):
       output = outputs[s]
       output['hm'] = output['hm']
-      # if opt.hm_hp and not opt.mse_loss:
-      #   output['hm_hp'] = _sigmoid(output['hm_hp'])
+      if opt.hm_hp and not opt.mse_loss:
+        output['hm_hp'] = _sigmoid(output['hm_hp'])
       
       if opt.eval_oracle_hmhp:
         output['hm_hp'] = batch['hm_hp']

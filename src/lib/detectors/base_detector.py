@@ -8,6 +8,7 @@ from progress.bar import Bar
 import time
 import torch
 
+from datetime import datetime
 from models.model import create_model, load_model
 from utils.image import get_affine_transform
 from utils.debugger import Debugger
@@ -99,7 +100,7 @@ class BaseDetector(object):
       image = image_or_path_or_tensor['image'][0].numpy()
       pre_processed_images = image_or_path_or_tensor
       pre_processed = True
-    
+
     loaded_time = time.time()
     load_time += (loaded_time - start_time)
     

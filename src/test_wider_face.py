@@ -41,7 +41,8 @@ def test_vedio(model_path, vedio_path=None):
         if det:
             flag, frame = cap.retrieve()
             res = detector.run(frame)
-            cv2.imshow('face detect', res['plot_img'])
+            cv2.imwrite('../outputs/', res['plot_img'])
+            # cv2.imshow('face detect', res['plot_img'])
 
         if cv2.waitKey(1)&0xFF == ord('q'):
             break
@@ -49,13 +50,13 @@ def test_vedio(model_path, vedio_path=None):
     cv2.destroyAllWindows()
 
 def test_wider_Face(model_path):
-    Path = '/home/deepblue/deepbluetwo/data/WIDER_val/images/'
-    wider_face_mat = sio.loadmat('/home/deepblue/deepbluetwo/data/wider_face_split/wider_face_val.mat')
+    Path = '/data2/liangjie/data/widerface/retinaface_gt_v1.1/val/images'
+    wider_face_mat = sio.loadmat('/data2/liangjie/data/widerface/wider_face_split/wider_face_val.mat')
     event_list = wider_face_mat['event_list']
     file_list = wider_face_mat['file_list']
     save_path = '../output/widerface/'
 
-    debug = 0            # return the detect result without show
+    debug = 1            # return the detect result without show
     threshold = 0.05
     TASK = 'multi_pose'  
     input_h, intput_w = 800, 800
@@ -73,7 +74,8 @@ def test_wider_Face(model_path):
             zip_name = '%s/%s.jpg' % (im_dir, im_name)
             print(os.path.join(Path, zip_name))
             img_path = os.path.join(Path, zip_name)
-            dets = detector.run(img_path)['results']
+            res = detector.run(img_path)
+            dets = res['results']
             f = open(save_path + im_dir + '/' + im_name + '.txt', 'w')
             f.write('{:s}\n'.format('%s/%s.jpg' % (im_dir, im_name)))
             f.write('{:d}\n'.format(len(dets)))
@@ -85,7 +87,8 @@ def test_wider_Face(model_path):
 
 
 if __name__ == '__main__':
-    MODEL_PATH = '../exp/multi_pose/mobilev2_10/model_best.pth'
+    # MODEL_PATH = '../exp/multi_pose/mobilev2_10/model_best.pth'
+    MODEL_PATH = './pretrained/centerface_best.pth'
     # test_img(MODEL_PATH)
-    test_vedio(MODEL_PATH)
-    # test_wider_Face(MODEL_PATH)
+    # test_vedio(MODEL_PATH)
+    test_wider_Face(MODEL_PATH)

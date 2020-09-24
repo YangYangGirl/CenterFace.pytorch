@@ -16,7 +16,7 @@ class opts(object):
                              help='coco | kitti | coco_hp | pascal | pig | face | facehp')
     self.parser.add_argument('--exp_id', default='dla')
     self.parser.add_argument('--test', action='store_true')
-    self.parser.add_argument('--debug', type=int, default=0,
+    self.parser.add_argument('--debug', type=int, default=2,
                              help='level of visualization.'
                                   '1: only show the final detection results'
                                   '2: show the network output features'
@@ -36,7 +36,7 @@ class opts(object):
     self.parser.add_argument('--val_json', default=None, help='the test file labels')
 
     # system
-    self.parser.add_argument('--gpus', default='0', 
+    self.parser.add_argument('--gpus', default='6,7',
                              help='-1 for CPU, use comma for multiple gpus')
     self.parser.add_argument('--num_workers', type=int, default=4,
                              help='dataloader threads. 0 for single-thread.')
@@ -90,7 +90,7 @@ class opts(object):
                              help='total training epochs.')
     self.parser.add_argument('--batch_size', type=int, default=4,
                              help='batch size')
-    self.parser.add_argument('--master_batch_size', type=int, default=15,
+    self.parser.add_argument('--master_batch_size', type=int, default=2,
                              help='batch size on the master gpu.')
     self.parser.add_argument('--num_iters', type=int, default=-1,
                              help='default: #samples / batch_size.')

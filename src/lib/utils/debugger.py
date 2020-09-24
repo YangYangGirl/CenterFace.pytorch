@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 from .ddd_utils import compute_box_3d, project_to_image, draw_box_3d
+from datetime import datetime
 
 class Debugger(object):
   def __init__(self, ipynb=False, theme='black', 
@@ -235,9 +236,11 @@ class Debugger(object):
                    3, (int(c[0]), int(c[1]), int(c[2])), -1)
 
   def show_all_imgs(self, pause=False, time=0):
+    # import pdb; pdb.set_trace()
     if not self.ipynb:
       for i, v in self.imgs.items():
-        cv2.imshow('{}'.format(i), v)
+        # cv2.imshow('{}'.format(i), v)
+        cv2.imwrite('./output/face_{}'.format(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]) + ".png", v)
       if cv2.waitKey(0 if pause else 2000) == 27:
         import sys
         sys.exit(0)
@@ -250,9 +253,11 @@ class Debugger(object):
       for i, (k, v) in enumerate(self.imgs.items()):
         fig.add_subplot(1, nImgs, i + 1)
         if len(v.shape) == 3:
-          self.plt.imshow(cv2.cvtColor(v, cv2.COLOR_BGR2RGB))
+          # self.plt.imshow(cv2.cvtColor(v, cv2.COLOR_BGR2RGB))
+          self.plt.imsave('../output/face.jpg', cv2.cvtColor(v, cv2.COLOR_BGR2RGB))
         else:
-          self.plt.imshow(v)
+          # self.plt.imshow(v)
+          self.plt.imsave('../output/face.jpg', v)
       self.plt.show()
 
   def return_img(self, img_id='multi_pose'):
