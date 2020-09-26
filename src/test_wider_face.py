@@ -54,9 +54,9 @@ def test_wider_Face(model_path):
     wider_face_mat = sio.loadmat('/data2/liangjie/data/widerface/wider_face_split/wider_face_val.mat')
     event_list = wider_face_mat['event_list']
     file_list = wider_face_mat['file_list']
-    save_path = '../output/widerface/'
+    save_path = './output/widerface/'
 
-    debug = 1            # return the detect result without show
+    debug = -1#1            # return the detect result without show
     threshold = 0.05
     TASK = 'multi_pose'  
     input_h, intput_w = 800, 800
