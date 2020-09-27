@@ -240,7 +240,7 @@ class Debugger(object):
     if not self.ipynb:
       for i, v in self.imgs.items():
         # cv2.imshow('{}'.format(i), v)
-        cv2.imwrite('./output/face_{}'.format(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]) + ".png", v)
+        cv2.imwrite('../output/imgs/face_{}'.format(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]) + ".png", v)
       if cv2.waitKey(0 if pause else 2000) == 27:
         import sys
         sys.exit(0)
@@ -261,6 +261,7 @@ class Debugger(object):
       self.plt.show()
 
   def return_img(self, img_id='multi_pose'):
+    img_id = 'ctdet'
     return self.imgs[img_id]
 
   def save_img(self, imgId='default', path='./cache/debug/'):

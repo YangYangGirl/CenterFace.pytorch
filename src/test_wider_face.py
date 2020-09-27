@@ -54,14 +54,18 @@ def test_wider_Face(model_path):
     wider_face_mat = sio.loadmat('/data2/liangjie/data/widerface/wider_face_split/wider_face_val.mat')
     event_list = wider_face_mat['event_list']
     file_list = wider_face_mat['file_list']
-    save_path = './output/widerface/'
+    save_path = '../output/ctdet_widerface_20/'
 
     debug = -1#1            # return the detect result without show
     threshold = 0.05
-    TASK = 'multi_pose'  
+    # TASK = 'multi_pose'  
     input_h, intput_w = 800, 800
-    opt = opts().init('--task {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
-        TASK, MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
+    # opt = opts().init('--task multi_pose --arch dla_34 --dataset facehp --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    #      MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
+    
+    opt = opts().init('--task ctdet --arch dla_34 --dataset facehp --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+         MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
+
     detector = detector_factory[opt.task](opt)
 
     for index, event in enumerate(event_list):
@@ -87,8 +91,10 @@ def test_wider_Face(model_path):
 
 
 if __name__ == '__main__':
+    # MODEL_PATH = '../exp/multi_pose/dla_34/model_best.pth'
+    MODEL_PATH = '../exp/ctdet/dla_34/model_20.pth'
     # MODEL_PATH = '../exp/multi_pose/mobilev2_10/model_best.pth'
-    MODEL_PATH = './pretrained/centerface_best.pth'
+    # MODEL_PATH = './pretrained/centerface_best.pth'
     # test_img(MODEL_PATH)
     # test_vedio(MODEL_PATH)
     test_wider_Face(MODEL_PATH)

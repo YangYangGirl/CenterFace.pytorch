@@ -31,8 +31,10 @@ class MultiPoseLoss(torch.nn.Module):
     for s in range(opt.num_stacks):
       output = outputs[s]
       output['hm'] = output['hm']
-      if opt.hm_hp and not opt.mse_loss:
-        output['hm_hp'] = _sigmoid(output['hm_hp'])
+      if not opt.mse_loss:
+        output['hm'] = _sigmoid(output['hm'])
+      # if opt.hm_hp and not opt.mse_loss:
+      #   output['hm_hp'] = _sigmoid(output['hm_hp'])
       
       if opt.eval_oracle_hmhp:
         output['hm_hp'] = batch['hm_hp']
@@ -51,7 +53,6 @@ class MultiPoseLoss(torch.nn.Module):
           batch['hp_offset'].detach().cpu().numpy(), 
           batch['hp_ind'].detach().cpu().numpy(), 
           opt.output_res, opt.output_res)).to(opt.device)
-
 
       hm_loss += self.crit(output['hm'], batch['hm']) / opt.num_stacks          # 1. focal loss,求目标的中心，
       if opt.wh_weight > 0:

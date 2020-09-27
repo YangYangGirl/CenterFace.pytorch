@@ -27,6 +27,9 @@ class MultiPoseDetector(BaseDetector):
       torch.cuda.synchronize()
       output = self.model(images)[-1]
       output['hm'] = output['hm']
+      # if not self.opt.mse_loss:
+      #   output['hm'] = output['hm'].sigmoid_()
+
       # if self.opt.hm_hp and not self.opt.mse_loss:
       #   output['hm_hp'] = output['hm_hp'].sigmoid_()
 
