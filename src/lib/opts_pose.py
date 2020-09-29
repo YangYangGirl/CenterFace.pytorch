@@ -159,16 +159,20 @@ class opts(object):
     # ctdet
     self.parser.add_argument('--reg_loss', default='sl1',
                              help='regression loss: sl1 | l1 | l2')
-    self.parser.add_argument('--hm_weight', type=float, default=1,
+    self.parser.add_argument('--hm_weight', type=float, default=0,
                              help='loss weight for keypoint heatmaps.')
     self.parser.add_argument('--off_weight', type=float, default=1,
                              help='loss weight for keypoint local offsets.')
     self.parser.add_argument('--wh_weight', type=float, default=0.1,
                              help='loss weight for bounding box size.')
     # multi_pose
-    self.parser.add_argument('--lm_weight', type=float, default=0.1,
+    # self.parser.add_argument('--lm_weight', type=float, default=0.1,
+    #                          help='loss weight for human pose offset.')
+    # self.parser.add_argument('--hm_hp_weight', type=float, default=1,
+    #                          help='loss weight for human keypoint heatmap.')
+    self.parser.add_argument('--lm_weight', type=float, default=0,
                              help='loss weight for human pose offset.')
-    self.parser.add_argument('--hm_hp_weight', type=float, default=1,
+    self.parser.add_argument('--hm_hp_weight', type=float, default=0,
                              help='loss weight for human keypoint heatmap.')
     # ddd
     self.parser.add_argument('--dep_weight', type=float, default=1,
