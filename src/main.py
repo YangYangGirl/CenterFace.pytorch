@@ -8,9 +8,9 @@ import os
 
 import torch
 import torch.utils.data
-from opts_pose import opts
+# from opts_pose import opts
 # from opts import opts
-# from opts2 import opts
+from opts2 import opts
 from models.model import create_model, load_model, save_model
 from models.data_parallel import DataParallel
 from logger import Logger

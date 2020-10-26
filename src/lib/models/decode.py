@@ -462,7 +462,7 @@ def ddd_decode(heat, rot, depth, dim, wh=None, reg=None, K=40):
       
     return detections
 
-def ctdet_decode(heat, wh, reg=None, cat_spec_wh=False, K=100):
+def ctdet_decode(heat, wh=None, ltrb=None, reg=None, cat_spec_wh=False, K=100):
     batch, cat, height, width = heat.size()
 
     # heat = torch.sigmoid(heat)
@@ -478,19 +478,36 @@ def ctdet_decode(heat, wh, reg=None, cat_spec_wh=False, K=100):
     else:
       xs = xs.view(batch, K, 1) + 0.5
       ys = ys.view(batch, K, 1) + 0.5
-    wh = _tranpose_and_gather_feat(wh, inds)
-    if cat_spec_wh:
-      wh = wh.view(batch, K, cat, 2)
-      clses_ind = clses.view(batch, K, 1, 1).expand(batch, K, 1, 2).long()
-      wh = wh.gather(2, clses_ind).view(batch, K, 2)
+
+    if ltrb is not None:
+        ltrb = _tranpose_and_gather_feat(ltrb, inds) # B x K x 4
+        if cat_spec_wh:
+            ltrb = ltrb.view(batch, K, cat, 4)
+            clses_ind = clses.view(batch, K, 1, 1).expand(batch, K, 1, 4).long()
+            ltrb = wh.gather(4, clses_ind).view(batch, K, 4)
+        else:
+            ltrb = ltrb.view(batch, K, 4)
+            clses  = clses.view(batch, K, 1).float()
+            scores = scores.view(batch, K, 1)
+            bboxes = torch.cat([xs - ltrb[..., 0:1], 
+                                ys - ltrb[..., 1:2],
+                                xs + ltrb[..., 2:3], 
+                                ys + ltrb[..., 3:4]], dim=2)
     else:
-      wh = wh.view(batch, K, 2)
-    clses  = clses.view(batch, K, 1).float()
-    scores = scores.view(batch, K, 1)
-    bboxes = torch.cat([xs - wh[..., 0:1] / 2, 
-                        ys - wh[..., 1:2] / 2,
-                        xs + wh[..., 0:1] / 2, 
-                        ys + wh[..., 1:2] / 2], dim=2)
+        wh = _tranpose_and_gather_feat(wh, inds)
+        if cat_spec_wh:
+            wh = wh.view(batch, K, cat, 2)
+            clses_ind = clses.view(batch, K, 1, 1).expand(batch, K, 1, 2).long()
+            wh = wh.gather(2, clses_ind).view(batch, K, 2)
+        else:
+            wh = wh.view(batch, K, 2)
+            clses  = clses.view(batch, K, 1).float()
+            scores = scores.view(batch, K, 1)
+            bboxes = torch.cat([xs - wh[..., 0:1] / 2, 
+                                ys - wh[..., 1:2] / 2,
+                                xs + wh[..., 0:1] / 2, 
+                                ys + wh[..., 1:2] / 2], dim=2)
+
     detections = torch.cat([bboxes, scores, clses], dim=2)
       
     return detections

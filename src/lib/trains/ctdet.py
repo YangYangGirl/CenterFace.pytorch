@@ -30,7 +30,7 @@ class CtdetLoss(torch.nn.Module):
     hm_loss, wh_loss, off_loss = 0, 0, 0
     for s in range(opt.num_stacks):
       output = outputs[s]
-      if not opt.mse_loss:
+      if not opt.mse_loss and (opt.arch == 'dla_34' or opt.arch == 'hourglass'):
         output['hm'] = _sigmoid(output['hm'])
 
       if opt.eval_oracle_hm:
@@ -48,7 +48,11 @@ class CtdetLoss(torch.nn.Module):
 
       hm_loss += self.crit(output['hm'], batch['hm']) / opt.num_stacks            # 热力图损失
       if opt.wh_weight > 0:
-        if opt.dense_wh:
+        if opt.ltrb:
+          wh_loss += self.crit_reg(
+            output['ltrb'], batch['ltrb_mask'],
+            batch['ind'], batch['ltrb']) / opt.num_stacks
+        elif opt.dense_wh:
           mask_weight = batch['dense_wh_mask'].sum() + 1e-4
           wh_loss += (
             self.crit_wh(output['wh'] * batch['dense_wh_mask'],

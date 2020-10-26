@@ -180,8 +180,14 @@ class MultiPoseDataset(data.Dataset):
       if (h > 0 and w > 0) or (rot != 0):
         radius = gaussian_radius((math.ceil(h), math.ceil(w)))
         radius = self.opt.hm_gauss if self.opt.mse_loss else max(0, int(radius)) 
-        ct = np.array(
-          [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)       # 人脸的中心坐标
+
+        num_kpts = pts[:, 2].sum()  
+        if num_kpts == 0:  
+            ct = np.array([pts[2][0], pts[2][1]], dtype=np.float32)# 用鼻子代替中心点
+        else:
+            ct = np.array(
+              [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)       # 人脸的中心坐标
+
         ct_int = ct.astype(np.int32)                        # 整数化
         # wh[k] = 1. * w, 1. * h                                                    # 2. centernet的方式
         wh[k] = np.log(1. * w / 4), np.log(1. * h / 4)                              # 2. 人脸bbox的高度和宽度,centerface论文的方式
@@ -191,10 +197,11 @@ class MultiPoseDataset(data.Dataset):
         # if w*h <= 20:
         #     wight_mask[k] = 15
 
-        num_kpts = pts[:, 2].sum()                           # 没有关键点标注的时哦
+        # num_kpts = pts[:, 2].sum()                           # 没有关键点标注的时哦
         if num_kpts == 0:                                    # 没有关键点标注的都是比较困难的样本
           # print('没有关键点标注')
-          hm[cls_id, ct_int[1], ct_int[0]] = 0.9999
+          hm[cls_id, int((bbox[0] + bbox[2]) / 2), int((bbox[1] + bbox[3]) / 2)] = 0.9999 
+          # hm[cls_id, ct_int[1], ct_int[0]] = 0.9999
           # reg_mask[k] = 0
 
         hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)))

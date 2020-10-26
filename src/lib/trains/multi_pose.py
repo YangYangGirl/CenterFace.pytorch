@@ -31,6 +31,8 @@ class MultiPoseLoss(torch.nn.Module):
     for s in range(opt.num_stacks):
       output = outputs[s]
       output['hm'] = output['hm']
+      if not opt.mse_loss and opt.arch == 'dla_34':
+        output['hm'] = _sigmoid(output['hm'])
       # if not opt.mse_loss:
       #   output['hm'] = _sigmoid(output['hm'])
       # if opt.hm_hp and not opt.mse_loss:

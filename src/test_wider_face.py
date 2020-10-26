@@ -9,7 +9,9 @@ CENTERNET_PATH = os.path.join(path,'../src/lib')
 sys.path.insert(0, CENTERNET_PATH)
 
 from detectors.detector_factory import detector_factory
-from opts_pose import opts
+# from opts_pose import opts
+# from opts import opts
+from opts2 import opts
 from datasets.dataset_factory import get_dataset
 
 
@@ -50,20 +52,30 @@ def test_vedio(model_path, vedio_path=None):
     cv2.destroyAllWindows()
 
 def test_wider_Face(model_path):
-    Path = '/data2/liangjie/data/widerface/retinaface_gt_v1.1/val/images'
-    wider_face_mat = sio.loadmat('/data2/liangjie/data/widerface/wider_face_split/wider_face_val.mat')
+    Path = '../data/widerface/retinaface_gt_v1.1/val/images'
+    wider_face_mat = sio.loadmat('../data/widerface/wider_face_split/wider_face_val.mat')
     event_list = wider_face_mat['event_list']
     file_list = wider_face_mat['file_list']
-    save_path = '../output/multi_pose_mobilev2_5_50_0.2/'
-
+    # save_path = '../output/ctdet_opt2_face_hp_mobilev2_5_160_0.55/'
+    # save_path = '../output/multi_pose_mobilev2_5_130_0.2/'
+    save_path = '../output/1015_opt2_facehp_mobilev2_5_nose_200/'
     debug = 1            # return the detect result without show
-    threshold = 0.2 #0.05
+    threshold = 0.05 #0.05
     # TASK = 'multi_pose'  
     input_h, intput_w = 800, 800
-    # opt = opts().init('--task multi_pose --arch dla_34 --dataset facehp --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    # opt = opts().init('--task ctdet --arch dla_34 --dataset facehp --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
     #      MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
     
-    opt = opts().init('--task multi_pose --test_scales 1.0 --arch mobilev2_5 --dataset facehp --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    # opt = opts().init('--task ctdet --test_scales 1.0 --arch mobilev2_5 --dataset face --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    #      MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
+
+    # opt = opts().init('--task multi_pose --test_scales 1.0 --arch dla_34 --dataset facehp --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    #      MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
+    
+    # opt = opts().init('--task multi_pose --test_scales 1.0 --arch mobilev2_5 --dataset facehp --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    #      MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
+
+    opt = opts().init('--task ctdet --ltrb --arch mobilev2_5 --dataset facehp --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
          MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
 
     detector = detector_factory[opt.task](opt)
@@ -91,8 +103,8 @@ def test_wider_Face(model_path):
 
 
 if __name__ == '__main__':
-    # MODEL_PATH = '../exp/multi_pose/dla_34/model_best.pth'
-    MODEL_PATH = '../exp/multi_pose/mobilev2_5/model_50.pth'
+    MODEL_PATH = '../exp/ctdet/1015_opt2_facehp_mobilev2_5_nose/model_200.pth'
+    # MODEL_PATH = '../exp/ctdet/1002_opt2_face_hp_mobilev2_5/model_160.pth'
     # MODEL_PATH = '../exp/multi_pose/mobilev2_10/model_best.pth'
     # MODEL_PATH = './pretrained/centerface_best.pth'
     # test_img(MODEL_PATH)

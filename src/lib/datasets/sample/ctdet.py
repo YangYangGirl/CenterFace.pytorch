@@ -39,6 +39,7 @@ class CTDetDataset(data.Dataset):
 
     height, width = img.shape[0], img.shape[1]
     c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
+    rot = 0
     if self.opt.keep_res:
       input_h = (height | self.opt.pad) + 1
       input_w = (width | self.opt.pad) + 1
@@ -62,6 +63,9 @@ class CTDetDataset(data.Dataset):
         c[1] += s * np.clip(np.random.randn()*cf, -2*cf, 2*cf)
         s = s * np.clip(np.random.randn()*sf + 1, 1 - sf, 1 + sf)
       
+      if np.random.random() < self.opt.aug_rot:
+        rf = self.opt.rotate
+        rot = np.clip(np.random.randn()*rf, -rf*2, rf*2)
       if np.random.random() < self.opt.flip:
         flipped = True
         img = img[:, ::-1, :]
@@ -82,16 +86,21 @@ class CTDetDataset(data.Dataset):
     output_h = input_h // self.opt.down_ratio
     output_w = input_w // self.opt.down_ratio
     num_classes = self.num_classes
+    output_res = self.opt.output_res
+    trans_output_rot = get_affine_transform(c, s, rot, [output_res, output_res])
     trans_output = get_affine_transform(c, s, 0, [output_w, output_h])
 
     hm = np.zeros((num_classes, output_h, output_w), dtype=np.float32)
     wh = np.zeros((self.max_objs, 2), dtype=np.float32)
     dense_wh = np.zeros((2, output_h, output_w), dtype=np.float32)
+    ltrb = np.zeros((self.max_objs, 4), dtype=np.float32)
     reg = np.zeros((self.max_objs, 2), dtype=np.float32)
     ind = np.zeros((self.max_objs), dtype=np.int64)
     reg_mask = np.zeros((self.max_objs), dtype=np.uint8)
     cat_spec_wh = np.zeros((self.max_objs, num_classes * 2), dtype=np.float32)
     cat_spec_mask = np.zeros((self.max_objs, num_classes * 2), dtype=np.uint8)
+    ltrb_mask = np.zeros((self.max_objs, ), dtype=np.uint8)
+    num_joints = self.num_joints
     
     draw_gaussian = draw_msra_gaussian if self.opt.mse_loss else \
                     draw_umich_gaussian
@@ -100,10 +109,17 @@ class CTDetDataset(data.Dataset):
     for k in range(num_objs):
       ann = anns[k]
       bbox = self._coco_box_to_bbox(ann['bbox'])
-      # cls_id = int(self.cat_ids[ann['category_id']])
-      cls_id = int(ann['category_id']) - 1
+      pts = np.array(ann['keypoints'], np.float32).reshape(num_joints, 3)
+      if 'face' in self.opt.dataset:
+        cls_id = int(ann['category_id']) - 1  # widerface
+        num_kpts = pts[:, 2].sum()  
+      else:
+        cls_id = int(self.cat_ids[ann['category_id']])
       if flipped:
         bbox[[0, 2]] = width - bbox[[2, 0]] - 1
+        pts[:, 0] = width - pts[:, 0] - 1
+        for e in self.flip_idx:
+          pts[e[0]], pts[e[1]] = pts[e[1]].copy(), pts[e[0]].copy()
       bbox[:2] = affine_transform(bbox[:2], trans_output)
       bbox[2:] = affine_transform(bbox[2:], trans_output)
       bbox[[0, 2]] = np.clip(bbox[[0, 2]], 0, output_w - 1)
@@ -113,8 +129,20 @@ class CTDetDataset(data.Dataset):
         radius = gaussian_radius((math.ceil(h), math.ceil(w)))                # 高斯半径
         radius = max(0, int(radius))
         radius = self.opt.hm_gauss if self.opt.mse_loss else radius
-        ct = np.array(
-          [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)       # 求中点
+
+        if self.opt.ltrb and pts[2][2] > 0:
+          pts[2, :2] = affine_transform(pts[2, :2], trans_output_rot)
+          if pts[2, 0] >= 0 and pts[2, 0] < output_res and \
+               pts[2, 1] >= 0 and pts[2, 1] < output_res:
+            ct = np.array([pts[2][0], pts[2][1]], dtype=np.float32)
+          else:
+            ct = np.array(
+              [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)       # 求中点
+        else:
+            ct = np.array(
+              [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)       # 求中点
+
+
         ct_int = ct.astype(np.int32)
         draw_gaussian(hm[cls_id], ct_int, radius)                             # 每个类别一个channel
         wh[k] = 1. * w, 1. * h                                        # 目标的wh
@@ -127,8 +155,11 @@ class CTDetDataset(data.Dataset):
           draw_dense_reg(dense_wh, hm.max(axis=0), ct_int, wh[k], radius)
         gt_det.append([ct[0] - w / 2, ct[1] - h / 2, 
                        ct[0] + w / 2, ct[1] + h / 2, 1, cls_id])
+        if self.opt.ltrb and pts[2][2] > 0:
+          ltrb[k] = ct_int[0] - bbox[0], ct_int[1] - bbox[1], bbox[2] - ct_int[0], bbox[3] - ct_int[1]
+          ltrb_mask[k] = 1
     
-    ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh}
+    ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'ltrb': ltrb, 'ltrb_mask': ltrb_mask, 'wh': wh}
     if self.opt.dense_wh:
       hm_a = hm.max(axis=0, keepdims=True)
       dense_wh_mask = np.concatenate([hm_a, hm_a], axis=0)

@@ -145,10 +145,13 @@ class BaseDetector(object):
     if self.opt.debug >= 1:
       self.show_results(debugger, image, results)
     
-    if self.opt.debug == -1:
-      plot_img = self.return_results(debugger, image, results)
-    else:
-      plot_img = None
+    plot_img = self.return_results(debugger, image, results)
+    # cv2.imwrite('./output/imgs/', 'pred_{}'.format(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]) + ".png", plot_img)
+    # if self.opt.debug == -1:
+    plot_img = self.return_results(debugger, image, results)
+
+    # else:
+    #   plot_img = None
     
     return {'results': results, 'tot': tot_time, 'load': load_time,
             'pre': pre_time, 'net': net_time, 'dec': dec_time,

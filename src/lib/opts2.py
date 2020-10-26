@@ -17,6 +17,8 @@ class opts(object):
                              help='coco | kitti | coco_hp | pascal | pig')
     self.parser.add_argument('--exp_id', default='dla')
     self.parser.add_argument('--test', action='store_true')
+    self.parser.add_argument('--ltrb', action='store_true',
+                             help='judge the dimention of wh')
     self.parser.add_argument('--debug', type=int, default=0,
                              help='level of visualization.'
                                   '-1: return the plot img in res[plot_img]'
@@ -27,7 +29,7 @@ class opts(object):
     self.parser.add_argument('--demo', default='/home/yangna/deepblue/2_MOT/CenterNet/data/pig/image/pig17593.jpg',
                              help='path to image/ image folders/ video. '
                                   'or "webcam"')
-    self.parser.add_argument('--load_model', default='./exp/ctdet/dla/model_best.pth',
+    self.parser.add_argument('--load_model', default='../exp/ctdet/dla/model_best.pth',
                              help='path to pretrained model')
     self.parser.add_argument('--resume', action='store_true',
                              help='resume an experiment. '
@@ -52,7 +54,7 @@ class opts(object):
                              help='disable progress bar and print to screen.')
     self.parser.add_argument('--hide_data_time', action='store_true',
                              help='not display time during training.')
-    self.parser.add_argument('--save_all', action='store_true',
+    self.parser.add_argument('--save_all', action='store_true', default=True,
                              help='save model to disk every 5 epochs.')
     self.parser.add_argument('--metric', default='loss', 
                              help='main metric to save best model')
@@ -318,8 +320,11 @@ class opts(object):
         opt.heads.update({'reg': 2})
     elif opt.task == 'ctdet':
       # assert opt.dataset in ['pascal', 'coco']
-      opt.heads = {'hm': opt.num_classes,
-                   'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes}
+      opt.heads = ({'hm': opt.num_classes})
+      if opt.ltrb:
+        opt.heads.update({'ltrb': 4 if not opt.cat_spec_wh else 2 * opt.num_classes})
+      else:
+        opt.heads.update({'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes})
       if opt.reg_offset:
         opt.heads.update({'reg': 2})
     elif opt.task == 'multi_pose':
@@ -339,12 +344,12 @@ class opts(object):
 
   def init(self, args=''):
     default_dataset_info = {
-      'ctdet': {'default_resolution': [512, 512], 'num_classes': 2,
-                'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225],
+      # 'ctdet': {'default_resolution': [512, 512], 'num_classes': 2,
+      #           'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225],
+      #           'dataset': 'coco'},
+      'ctdet': {'default_resolution': [512, 512], 'num_classes': 1, 
+                'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
                 'dataset': 'coco'},
-    # 'ctdet': {'default_resolution': [512, 512], 'num_classes': 1,
-    #           'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
-    #           'dataset': 'coco'},
       'exdet': {'default_resolution': [512, 512], 'num_classes': 80, 
                 'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
                 'dataset': 'coco'},

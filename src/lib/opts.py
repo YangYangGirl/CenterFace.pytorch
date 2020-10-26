@@ -12,7 +12,7 @@ class opts(object):
     # basic experiment setting
     self.parser.add_argument('--task', default='multi_pose',
                              help='ctdet | ddd | multi_pose | exdet')
-    self.parser.add_argument('--dataset', default='facehp',
+    self.parser.add_argument('--dataset', default='coco',
                              help='coco | kitti | coco_hp | pascal | pig | face | facehp')
     self.parser.add_argument('--exp_id', default='dla')
     self.parser.add_argument('--test', action='store_true')
@@ -22,7 +22,7 @@ class opts(object):
                                   '2: show the network output features'
                                   '3: use matplot to display' # useful when lunching training with ipython notebook
                                   '4: save all visualizations to disk')
-    self.parser.add_argument('--demo', default='/home/yangna/deepblue/2_MOT/CenterNet/data/pig/image/pig17593.jpg',
+    self.parser.add_argument('--demo', default='../data/pig/image/pig17593.jpg',
                              help='path to image/ image folders/ video. '
                                   'or "webcam"')
     self.parser.add_argument('--load_model', default='',
