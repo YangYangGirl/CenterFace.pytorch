@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 import cv2
 from .ddd_utils import compute_box_3d, project_to_image, draw_box_3d
 from datetime import datetime
+from opts_pose import opts
+import os
+
 
 class Debugger(object):
   def __init__(self, ipynb=False, theme='black', 
@@ -16,6 +19,9 @@ class Debugger(object):
       import matplotlib.pyplot as plt
       self.plt = plt
     self.imgs = {}
+
+    self.opt = opts().parse()
+
     self.theme = theme
     colors = [(color_list[_]).astype(np.uint8) \
             for _ in range(len(color_list))]
@@ -240,7 +246,12 @@ class Debugger(object):
     if not self.ipynb:
       for i, v in self.imgs.items():
         # cv2.imshow('{}'.format(i), v)
-        cv2.imwrite('../output/imgs/face_{}'.format(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]) + ".png", v)
+        # exp_id = "1030_s_face_hp_mobilev2_5_640_640_e70"
+        exp_id = "released_model"
+        if not os.path.exists('../output/imgs/' + exp_id):
+          os.makedirs('../output/imgs/' + exp_id)
+        cv2.imwrite('../output/imgs/' + exp_id + '/face_{}'.format(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]) + ".png", v)
+        # cv2.imwrite('../output/imgs/face_{}'.format(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]) + ".png", v)
       if cv2.waitKey(0 if pause else 2000) == 27:
         import sys
         sys.exit(0)
@@ -261,7 +272,7 @@ class Debugger(object):
       self.plt.show()
 
   def return_img(self, img_id='multi_pose'):
-    img_id = 'ctdet'
+    # img_id = 'ctdet'
     return self.imgs[img_id]
 
   def save_img(self, imgId='default', path='./cache/debug/'):

@@ -12,7 +12,7 @@ import torch.utils.data as data
 
 class FACE(data.Dataset):
   num_classes = 1
-  default_resolution = [800, 800]
+  # default_resolution = [800, 800]
   mean = np.array([0.485, 0.456, 0.406],
                    dtype=np.float32).reshape(1, 1, 3)
   std  = np.array([0.229, 0.224, 0.225],
@@ -21,7 +21,7 @@ class FACE(data.Dataset):
   def __init__(self, opt, split):
     super(FACE, self).__init__()
     self.data_dir = os.path.join(opt.data_dir, 'wider_face')
-    self.img_dir = os.path.join(self.data_dir, 'image')                 # 这个在载入图片的时候有用
+    self.img_dir = os.path.join(self.data_dir, '{}_images'.format(split))                 # 这个在载入图片的时候有用
     _ann_name = {'train': 'train', 'val': 'val'}
     self.annot_path = os.path.join(
       self.data_dir, 'annotations', 

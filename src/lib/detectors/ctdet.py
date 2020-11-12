@@ -99,4 +99,4 @@ class CtdetDetector(BaseDetector):
       for bbox in results[j]:
         if bbox[4] > self.opt.vis_thresh:
           debugger.add_coco_bbox(bbox[:4], j - 1, bbox[4], img_id='ctdet')
-    return debugger.return_img()
+    return debugger.return_img(img_id='ctdet')

@@ -7,7 +7,9 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.nn import init
 
-from .DCNv2.dcn_v2 import DCN
+import sys
+sys.path.append('./')
+from ..networks.DCNv2.dcn_v2 import DCN
 
 BN_MOMENTUM = 0.1
 def conv_bn(inp, oup, stride):
@@ -52,6 +54,16 @@ def fill_up_weights(up):
     for c in range(1, w.size(0)):
         w[c, 0, :, :] = w[0, 0, :, :] 
 
+def dict2list(func):
+    def wrap(*args, **kwargs):
+        self = args[0]
+        x = args[1]
+        ret_list = []
+        ret = func(self, x)
+        for k, v in ret[0].items():
+            ret_list.append(v)
+        return ret_list
+    return wrap
 
 class InvertedResidual(nn.Module):
     def __init__(self, inp, oup, stride, benchmodel):
@@ -118,11 +130,12 @@ class InvertedResidual(nn.Module):
         return channel_shuffle(out, 2)
 
 class ShuffleNetV2(nn.Module):
-    def __init__(self, input_size=512, width_mult=1.):
+    def __init__(self, heads, head_conv, n_class=1000, input_size=224, width_mult=1.):
         super(ShuffleNetV2, self).__init__()
         self.inplanes = 24
         self.deconv_with_bias = False
         assert input_size % 32 == 0
+
         self.stage_repeats = [4, 8, 4]
         #self.stage_repeats = [2, 3, 2]
         # index 0 is invalid and should never be called.
@@ -170,9 +183,36 @@ class ShuffleNetV2(nn.Module):
         # used for deconv layers
         self.deconv_layers = self._make_deconv_layer(
             3,
-            [256, 256, 256],
+            [head_conv, head_conv, head_conv],
             [4, 4, 4],
         )
+
+        # self.deconv_layers = self._make_deconv_layer(
+        #     3,
+        #     [64, 64, 64],
+        #     [4, 4, 4],
+        # )
+
+        self.heads = heads
+        for head in self.heads:
+            classes = self.heads[head]
+            if head == 'hm':
+                fc = nn.Sequential(
+                    nn.Conv2d(head_conv, classes,
+                              kernel_size=1, stride=1,
+                              padding=0, bias=True),
+                    nn.Sigmoid()
+                )
+            else:
+                fc = nn.Conv2d(head_conv, classes,
+                              kernel_size=1, stride=1,
+                              padding=0, bias=True)
+            # if 'hm' in head:
+            #     fc.bias.data.fill_(-2.19)
+            # else:
+            #     nn.init.normal_(fc.weight, std=0.001)
+            #     nn.init.constant_(fc.bias, 0)
+            self.__setattr__(head, fc)
 
 
     def _get_deconv_cfg(self, deconv_kernel, index):
@@ -241,13 +281,17 @@ class ShuffleNetV2(nn.Module):
             #pretrained_state_dict = torch.load(address)
             #self.load_state_dict(pretrained_state_dict, strict=False)
 
-            
+    @dict2list         # 转onnx的时候需要将输出由dict转成list模式
     def forward(self, x):
         #import pdb; pdb.set_trace()
         x = self.conv1(x)
         x = self.maxpool(x)
         x = self.features(x)
         x = self.deconv_layers(x)
+        ret = {}
+        for head in self.heads:
+            ret[head] = self.__getattr__(head)(x)
+        return [ret]
         
         return x
 
@@ -257,7 +301,7 @@ def shufflenetv2(width_mult=1.):
     return model
 
 
-def get_shufflev2_net(num_layers, cfg):
-  model = ShuffleNetV2()
-  model.init_weights( pretrained=True)
+def get_shufflev2_net(num_layers, heads, head_conv=24):
+  model = ShuffleNetV2(heads, head_conv, width_mult=1.0)
+  # model.init_weights(pretrained=True)
   return model

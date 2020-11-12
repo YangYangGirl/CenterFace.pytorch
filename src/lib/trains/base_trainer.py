@@ -7,7 +7,7 @@ import torch
 from progress.bar import Bar
 from models.data_parallel import DataParallel
 from utils.utils import AverageMeter
-
+from thop import profile
 
 class ModleWithLoss(torch.nn.Module):
   def __init__(self, model, loss):
@@ -16,6 +16,16 @@ class ModleWithLoss(torch.nn.Module):
     self.loss = loss
   
   def forward(self, batch):
+
+    # # # m = torch.randn(1, 3, 640, 480).cuda()
+    # m = torch.randn(1, 3, 800, 800).cuda()
+    # # # # m = torch.randn(1, 3, 640, 640).cuda()
+    # # # # m = torch.randn(1, 3, 512, 512).cuda()
+    # flops, params = profile(self.model, inputs=(m,))
+
+    # print("flops:", flops/10e5, " M")
+    # print("parameters", params/10e5, " M")
+
     outputs = self.model(batch['input'])
     loss, loss_stats = self.loss(outputs, batch)          # 输入
     return outputs[-1], loss, loss_stats

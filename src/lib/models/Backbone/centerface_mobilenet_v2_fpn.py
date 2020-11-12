@@ -104,7 +104,7 @@ class MobileNetV2(nn.Module):
                 stride = s if i == 0 else 1
                 features.append(block(input_channel, output_channel, stride, expand_ratio=t))
                 input_channel = output_channel
-            if id in self.feat_id  :
+            if id in self.feat_id:
                 self.__setattr__("feature_%d"%id,nn.Sequential(*features))
                 self.feat_channel.append(output_channel)
                 features = []
@@ -127,12 +127,16 @@ class MobileNetV2(nn.Module):
         return y
 
 def load_model(model,state_dict):
-    new_model=model.state_dict()
+    new_model = model.state_dict()
     new_keys = list(new_model.keys())
     old_keys = list(state_dict.keys())
     restore_dict = OrderedDict()
     for id in range(len(new_keys)):
         restore_dict[new_keys[id]] = state_dict[old_keys[id]]
+
+    # for id in range(len(new_keys)):
+    #     if restore_dict[new_keys[id]].shape == model.state_dict()[new_keys[id]].shape:
+    #         print(id, "success")
     model.load_state_dict(restore_dict)
 
 def dict2list(func):
@@ -183,11 +187,18 @@ class IDAUp(nn.Module):
         # self.smooth = nn.Conv2d(out_dim, out_dim, kernel_size=3, stride=1, padding=1)
 
     def forward(self, layers):
+        
         layers = list(layers)
+        # print("in ==============")
+        # print(layers[0].shape)
         x = self.up(layers[0])
+        # print("after up ==============")
+        # print(x.shape)
         y = self.conv(layers[1])
+        # print("after conv ==============")
+        # print(y.shape)
         # out = self.smooth(x + y)
-        out = x + y
+        out = x + y   #the author adds fpn there
         return out
 
 class MobileNetUp(nn.Module):
@@ -207,6 +218,8 @@ class MobileNetUp(nn.Module):
 
         for i,channel in enumerate(channels[1:]):
             setattr(self,'up_%d'%(i),IDAUp(out_dim,channel))
+            print('up_%d'%(i), IDAUp(out_dim,channel))   # 4 outputs of fpn 
+
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -227,11 +240,12 @@ class MobileNetUp(nn.Module):
         for i in range(0,len(layers)-1):
             up = getattr(self, 'up_{}'.format(i))
             x = up([x,layers[len(layers)-2-i]])
+
         x = self.conv_last(x)
         return x
 
 class MobileNetSeg(nn.Module):
-    def __init__(self, base_name,heads,head_conv=24, pretrained = True):
+    def __init__(self, base_name, heads,head_conv=24, pretrained = True):
         super(MobileNetSeg, self).__init__()
         self.heads = heads
         self.base = globals()[base_name](
@@ -270,10 +284,11 @@ class MobileNetSeg(nn.Module):
 
 def mobilenetv2_10(pretrained=True, **kwargs):
     model = MobileNetV2(width_mult=1.0)
-    if pretrained:
-        state_dict = model_zoo.load_url(model_urls['mobilenet_v2'],
-                                              progress=True)
-        load_model(model,state_dict)
+    # if pretrained:
+    #     print("================== successfully load mobilev2_10 ==================")
+    #     state_dict = model_zoo.load_url(model_urls['mobilenet_v2'],
+    #                                           progress=True)
+    #     load_model(model,state_dict)
     return model
 
 def mobilenetv2_5(pretrained=False, **kwargs):
@@ -293,6 +308,6 @@ def get_mobile_net(num_layers, heads, head_conv=24):
 if __name__ == '__main__':
     import torch
     input = torch.zeros([1,3,416,416])
-    model = get_mobile_net(10,{'hm':1, 'hm_offset':2, 'wh':2, 'landmarks':10},head_conv=24)          # hm reference for the classes of objects//这个头文件只能做矩形框检测
+    model = get_mobile_net(10,{'hm':1, 'hm_offset':2, 'wh':2, 'landmarks':10},head_conv=24)      # hm reference for the classes of objects//这个头文件只能做矩形框检测
     res = model(input)
     print(res.shape)

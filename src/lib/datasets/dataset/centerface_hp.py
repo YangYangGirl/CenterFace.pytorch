@@ -14,6 +14,9 @@ class FACEHP(data.Dataset):
   num_classes = 1
   num_joints = 5
   default_resolution = [800, 800]
+  # default_resolution = [512, 512]
+  # default_resolution = [480, 640]
+  # default_resolution = [640, 640]
   mean = np.array([0.40789654, 0.44719302, 0.47026115],
                    dtype=np.float32).reshape(1, 1, 3)
   std  = np.array([0.28863828, 0.27408164, 0.27809835],
@@ -29,7 +32,9 @@ class FACEHP(data.Dataset):
     
     self.acc_idxs = [1, 2, 3, 4]
     self.data_dir = os.path.join(opt.data_dir, 'wider_face')
-    self.img_dir = os.path.join(self.data_dir, 'image')                 # 这个在载入图片的时候有用
+    # self.img_dir = os.path.join(self.data_dir, 'image')                 # 这个在载入图片的时候有用
+    self.img_dir = os.path.join(self.data_dir, '{}_images'.format(split))                 # 这个在载入图片的时候有用
+  
     _ann_name = {'train': 'train', 'val': 'val'}
     if split == 'test':
       self.annot_path = os.path.join(

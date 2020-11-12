@@ -105,7 +105,7 @@ class opts(object):
     # test
     self.parser.add_argument('--flip_test', action='store_true',
                              help='flip data augmentation.')
-    self.parser.add_argument('--test_scales', type=str, default='1',
+    self.parser.add_argument('--test_scales', type=str, default='1.0',
                              help='multi scale test augmentation.')
     self.parser.add_argument('--nms', action='store_true',
                              help='run nms in testing.')
@@ -248,7 +248,8 @@ class opts(object):
     opt.reg_hp_offset = (not opt.not_reg_hp_offset) and opt.hm_hp
 
     if opt.head_conv == -1: # init default head_conv
-      opt.head_conv = 256 if 'dla' in opt.arch else 64
+      
+      opt.head_conv = 64 if ('dla' in opt.arch or 'shuffle' in opt.arch) else 64
     opt.pad = 127 if 'hourglass' in opt.arch else 31
     opt.num_stacks = 2 if opt.arch == 'hourglass' else 1
 
@@ -275,7 +276,8 @@ class opts(object):
     opt.root_dir = os.path.join(os.path.dirname(__file__), '..', '..')
     opt.data_dir = os.path.join(opt.root_dir, 'data')
     opt.exp_dir = os.path.join(opt.root_dir, 'exp', opt.task)
-    opt.save_dir = os.path.join(opt.exp_dir, opt.arch)
+    # opt.save_dir = os.path.join(opt.exp_dir, opt.arch)
+    opt.save_dir = os.path.join(opt.exp_dir, opt.exp_id)
     opt.debug_dir = os.path.join(opt.save_dir, 'debug')
     print('The output will be saved to ', opt.save_dir)
     
@@ -349,14 +351,26 @@ class opts(object):
     # 'ctdet': {'default_resolution': [512, 512], 'num_classes': 1,
     #           'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
     #           'dataset': 'coco'},
-      'exdet': {'default_resolution': [512, 512], 'num_classes': 80, 
+      'exdet': {'default_resolution': [640, 640], 'num_classes': 80, 
                 'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
                 'dataset': 'coco'},
+
+      # 'multi_pose': {
+      #   'default_resolution': [512, 512], 'num_classes': 1, 
+      #   'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
+      #   'dataset': 'facehp', 'num_joints': 5,
+      #   'flip_idx': [[0, 1], [3, 4]]},
+
       'multi_pose': {
-        'default_resolution': [512, 512], 'num_classes': 1, 
+        # 'default_resolution': [320, 320], 'num_classes': 1, 
+        # 'default_resolution': [512, 512], 'num_classes': 1, 
+        # 'default_resolution': [640, 640], 'num_classes': 1,
+        # 'default_resolution': [480, 640], 'num_classes': 1,
+        'default_resolution': [800, 800], 'num_classes': 1,
         'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
         'dataset': 'facehp', 'num_joints': 5,
         'flip_idx': [[0, 1], [3, 4]]},
+
       'ddd': {'default_resolution': [384, 1280], 'num_classes': 3, 
                 'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225],
                 'dataset': 'kitti'},

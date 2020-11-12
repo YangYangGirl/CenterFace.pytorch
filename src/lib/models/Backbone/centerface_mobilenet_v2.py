@@ -259,9 +259,13 @@ class MobileNetSeg(nn.Module):
     def forward(self, x):
         x = self.base(x)
         x = self.dla_up(x)
-        ret = {}
+        ret = []
         for head in self.heads:
-            ret[head] = self.__getattr__(head)(x)
+            ret.append(self.__getattr__(head)(x))
+
+        # ret = {}
+        # for head in self.heads:
+        #     ret[head] = self.__getattr__(head)(x)
         return [ret]
 
 

@@ -168,7 +168,7 @@ def parseXmlFiles(xml_path):
                     addAnnoItem(object_name, current_image_id, current_category_id, bbox )
 
 if __name__ == '__main__':
-    xml_path = '/home/yangna/deepblue/32_face_detect/centerface/data/wider_face/voc_xml'
+    xml_path = './data/wider_face/voc_xml'
     json_file = './data/wider_face/annotations/val_wider_face.json'
     parseXmlFiles(xml_path)
     json.dump(coco, open(json_file, 'w'))

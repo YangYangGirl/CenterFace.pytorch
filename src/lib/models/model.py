@@ -13,10 +13,11 @@ from .networks.pose_dla_dcn import get_pose_net as get_dla_dcn
 from .networks.resnet_dcn import get_pose_net as get_pose_net_dcn
 from .networks.large_hourglass import get_large_hourglass_net
 from .Backbone.mobilenetv2 import get_mobile_pose_netv2
-from .Backbone.mobilenet_v2 import get_mobile_net
-from .Backbone.centerface_mobilenet_v2 import get_mobile_net
+# from .Backbone.mobilenet_v2 import get_mobile_net
+# from .Backbone.centerface_mobilenet_v2 import get_mobile_net
 from .Backbone.centerface_mobilenet_v2_fpn import get_mobile_net
-
+from .Backbone.shufflenetv2_dcn import get_shufflev2_net
+from .Backbone.mobilenetxt import get_mobilext_net
 
 _model_factory = {
   'res': get_pose_net, # default Resnet with deconv
@@ -25,6 +26,8 @@ _model_factory = {
   'resdcn': get_pose_net_dcn,
   'hourglass': get_large_hourglass_net,
   'mobilev2': get_mobile_net,
+  'shufflenetv2': get_shufflev2_net,
+  'mobilext': get_mobilext_net,
 }
 
 def create_model(arch, heads, head_conv):

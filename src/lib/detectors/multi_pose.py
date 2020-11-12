@@ -27,8 +27,8 @@ class MultiPoseDetector(BaseDetector):
       torch.cuda.synchronize()
       output = self.model(images)[-1]
       output['hm'] = output['hm']
-      # if not self.opt.mse_loss:
-      #   output['hm'] = output['hm'].sigmoid_()
+      if not self.opt.mse_loss:
+        output['hm'] = output['hm'].sigmoid_()
 
       # if self.opt.hm_hp and not self.opt.mse_loss:
       #   output['hm_hp'] = output['hm_hp'].sigmoid_()
@@ -75,6 +75,8 @@ class MultiPoseDetector(BaseDetector):
     results[1] = np.concatenate(
         [detection[1] for detection in detections], axis=0).astype(np.float32)
     if self.opt.nms or len(self.opt.test_scales) > 1:
+      print("self.opt.test_scales", self.opt.test_scales)
+      print("nms", self.opt.nms)
       soft_nms_39(results[1], Nt=0.5, method=2)
     results[1] = results[1].tolist()
     return results

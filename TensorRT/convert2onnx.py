@@ -71,24 +71,35 @@ class class_centernet(object):
 def main(opt):
     # init model
     os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
-    Detector = detector_factory[opt.task]
-    detector = Detector(opt)
+    #Detector = detector_factory[opt.task]
+    #detector = Detector(opt)
 
     debug = 0            # return the detect result without show
     threshold = 0.05
     TASK = 'multi_pose'  # or 'multi_pose' for human pose estimation
     input_h, intput_w = 800, 800
-    MODEL_PATH = '/home/deepblue/deepbluetwo/chenjun/4_face_detect/centerface/exp/multi_pose/mobilev2_10/model_15.pth'
-    opt = opts().init('--task {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    MODEL_PATH = '/home/yangy/CenterFace.pytorch/exp/multi_pose/1111_face_hp_shufflenetv2_10_800_800_bs24_head64_2.5e-4/model_5.pth'
+    #MODEL_PATH = '/home/yangy/github/CenterFace.pytorch/exp/multi_pose/mobilev2_10/model_95.pth'
+    #MODEL_PATH = '/home/deepblue/deepbluetwo/chenjun/4_face_detect/centerface/exp/multi_pose/mobilev2_10/model_15.pth'
+    
+
+    # opt = opts().init('--task multi_pose --arch mobilev2_10 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    #      save_path, MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
+
+    opt = opts().init('--task {} --arch shufflenetv2_10 --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
         TASK, MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
+
+    # opt = opts().init('--task {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    #     TASK, MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
     detector = detector_factory[opt.task](opt)
 
-    out_onnx_path = "../output/onnx_model/mobilev2_aspaper.onnx"
+    out_onnx_path = "../output/onnx_model/shufflev2_aspaper.onnx"
     image = cv2.imread('../readme/test.png')
     torch_input, meta = detector.pre_process(image, scale=1)
     torch_input = torch_input.cuda()
     # pytorch output
     torch_output = detector.model(torch_input)
+    print(type(detector.model), type(torch_input))
     torch.onnx.export(detector.model, torch_input, out_onnx_path, verbose=False)
     sess = nxrun.InferenceSession(out_onnx_path)
 

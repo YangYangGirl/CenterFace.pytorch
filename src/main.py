@@ -8,9 +8,9 @@ import os
 
 import torch
 import torch.utils.data
-# from opts_pose import opts
+from opts_pose import opts
 # from opts import opts
-from opts2 import opts
+# from opts2 import opts
 from models.model import create_model, load_model, save_model
 from models.data_parallel import DataParallel
 from logger import Logger
@@ -25,6 +25,7 @@ def main(opt, qtepoch=[0,]):
   torch.backends.cudnn.benchmark = not opt.not_cuda_benchmark and not opt.test
   Dataset = get_dataset(opt.dataset, opt.task)
   opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
+  print(opt.input_w, "opt.input_w")
   print(opt)
 
   logger = Logger(opt)
