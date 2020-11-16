@@ -281,7 +281,7 @@ class ShuffleNetV2(nn.Module):
             #pretrained_state_dict = torch.load(address)
             #self.load_state_dict(pretrained_state_dict, strict=False)
 
-    @dict2list         # 转onnx的时候需要将输出由dict转成list模式
+    # @dict2list         # 转onnx的时候需要将输出由dict转成list模式
     def forward(self, x):
         #import pdb; pdb.set_trace()
         x = self.conv1(x)
@@ -293,8 +293,6 @@ class ShuffleNetV2(nn.Module):
             ret[head] = self.__getattr__(head)(x)
         return [ret]
         
-        return x
-
 
 def shufflenetv2(width_mult=1.):
     model = ShuffleNetV2(width_mult=width_mult)

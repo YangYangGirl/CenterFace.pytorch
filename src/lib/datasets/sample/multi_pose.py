@@ -99,8 +99,7 @@ class MultiPoseDataset(data.Dataset):
     flipped = False
     if self.split == 'train':
       if not self.opt.not_rand_crop:
-        # print("=================== goto ===================")
-        # s = s * np.random.choice(np.arange(0.3, 1.2, 0.1))
+        # s = s * np.random.choice(np.arange(0.8, 1.1, 0.1))
         s = s
         # _border = np.random.randint(128*0.4, 128*1.4)
         _border = s * np.random.choice([0.1, 0.2, 0.25])
@@ -148,6 +147,8 @@ class MultiPoseDataset(data.Dataset):
                           dtype=np.float32)
     dense_kps_mask = np.zeros((num_joints, output_res, output_res), 
                                dtype=np.float32)
+    ltrb = np.zeros((self.max_objs, 4), dtype=np.float32)
+    ltrb_mask = np.zeros((self.max_objs, ), dtype=np.uint8)
     wh = np.zeros((self.max_objs, 2), dtype=np.float32)
     kps = np.zeros((self.max_objs, num_joints * 2), dtype=np.float32)
     reg = np.zeros((self.max_objs, 2), dtype=np.float32)
@@ -186,6 +187,11 @@ class MultiPoseDataset(data.Dataset):
         ct_int = ct.astype(np.int32)                        # 整数化
         # wh[k] = 1. * w, 1. * h                                                    # 2. centernet的方式
         wh[k] = np.log(1. * w / 4), np.log(1. * h / 4)                              # 2. 人脸bbox的高度和宽度,centerface论文的方式
+
+        if self.opt.ltrb and pts[2][2] > 0:
+          ltrb[k] = ct_int[0] - bbox[0], ct_int[1] - bbox[1], bbox[2] - ct_int[0], bbox[3] - ct_int[1]   # may be need log
+          ltrb_mask[k] = 1
+
         ind[k] = ct_int[1] * output_res + ct_int[0]         # 人脸bbox在1/4特征图中的索引
         reg[k] = ct - ct_int                                # 3. 人脸bbox中心点整数化的偏差
         reg_mask[k] = 1                                     # 是否需要用于计算误差
@@ -229,7 +235,7 @@ class MultiPoseDataset(data.Dataset):
       reg_mask *= 0
       kps_mask *= 0
     ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh,
-           'landmarks': kps, 'hps_mask': kps_mask, 'wight_mask': wight_mask}
+           'landmarks': kps, 'hps_mask': kps_mask, 'wight_mask': wight_mask, 'ltrb': ltrb, 'ltrb_mask': ltrb_mask}
     if self.opt.dense_hp:
       dense_kps = dense_kps.reshape(num_joints * 2, output_res, output_res)
       dense_kps_mask = dense_kps_mask.reshape(

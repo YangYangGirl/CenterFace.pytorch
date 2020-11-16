@@ -92,6 +92,7 @@ class MultiPoseDataset(data.Dataset):
         reg = np.zeros((self.max_objs, 2), dtype=np.float32)
         ind = np.zeros((self.max_objs), dtype=np.int64)
         reg_mask = np.zeros((self.max_objs), dtype=np.uint8)
+        wight_mask = np.ones((self.max_objs), dtype=np.float32)
         kps_mask = np.zeros((self.max_objs, self.num_joints * 2), dtype=np.uint8)
         hp_offset = np.zeros((self.max_objs * num_joints, 2), dtype=np.float32)
         hp_ind = np.zeros((self.max_objs * num_joints), dtype=np.int64)
@@ -159,7 +160,7 @@ class MultiPoseDataset(data.Dataset):
             reg_mask *= 0
             kps_mask *= 0
         ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh,
-               'hps': kps, 'hps_mask': kps_mask}
+               'hps': kps, 'hps_mask': kps_mask, 'wight_mask': wight_mask}
         if self.opt.dense_hp:
             dense_kps = dense_kps.reshape(num_joints * 2, output_res, output_res)
             dense_kps_mask = dense_kps_mask.reshape(

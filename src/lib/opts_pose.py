@@ -84,6 +84,8 @@ class opts(object):
                              help='input width. -1 for default from dataset.')
     
     # train
+    self.parser.add_argument('--ltrb', action='store_true',
+                             help='judge the dimention of wh')
     self.parser.add_argument('--lr', type=float, default=1.25e-4,
                              help='learning rate for batch size 32.')
     self.parser.add_argument('--lr_step', type=str, default='30,80',
@@ -336,8 +338,11 @@ class opts(object):
     #     opt.heads.update({'hp_offset': 2})
     elif opt.task == 'multi_pose':
       opt.flip_idx = dataset.flip_idx
-      opt.heads = {'hm': opt.num_classes, 'wh': 2, 'hm_offset': 2, 'landmarks': dataset.num_joints * 2}
-
+      opt.heads = {'hm': opt.num_classes, 'hm_offset': 2, 'landmarks': dataset.num_joints * 2}
+      if opt.ltrb:
+        opt.heads.update({'ltrb': 4 if not opt.cat_spec_wh else 2 * opt.num_classes})
+      else:
+        opt.heads.update({'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes})
     else:
       assert 0, 'task not defined!'
     print('heads', opt.heads)

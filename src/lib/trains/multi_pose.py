@@ -5,18 +5,20 @@ from __future__ import print_function
 import torch
 import numpy as np
 
-from models.losses import FocalLoss, RegL1Loss, RegLoss, RegWeightedL1Loss
+from models.losses import FocalLoss, RegL1Loss, RegLoss, RegWeightedL1Loss, GIoULoss
 from models.decode import multi_pose_decode
 from models.utils import _sigmoid, flip_tensor, flip_lr_off, flip_lr
 from utils.debugger import Debugger
 from utils.post_process import multi_pose_post_process
 from utils.oracle_utils import gen_oracle_map
 from .base_trainer import BaseTrainer
+from models.decode import multi_pose_decode, centerface_decode
 
 class MultiPoseLoss(torch.nn.Module):
   def __init__(self, opt):
     super(MultiPoseLoss, self).__init__()
     self.crit = FocalLoss()
+    self.giou_loss = GIoULoss()
     self.crit_hm_hp = torch.nn.MSELoss() if opt.mse_loss else FocalLoss()
     self.crit_kp = RegWeightedL1Loss() if not opt.dense_hp else \
                    torch.nn.L1Loss(reduction='sum')
@@ -57,8 +59,16 @@ class MultiPoseLoss(torch.nn.Module):
 
       hm_loss += self.crit(output['hm'], batch['hm']) / opt.num_stacks          # 1. focal loss,求目标的中心，
       if opt.wh_weight > 0:
-        wh_loss += self.crit_reg(output['wh'], batch['reg_mask'],               # 2. 人脸bbox高度和宽度的loss
+        if opt.ltrb:
+          wh_loss += self.giou_loss(output['ltrb'], batch['reg_mask'],               # 2. 人脸bbox高度和宽度的loss
+                                 batch['ind'], batch['ltrb'], batch['wight_mask'])/ opt.num_stacks
+
+        else:
+          wh_loss += self.giou_loss(output['wh'], batch['reg_mask'],               # 2. 人脸bbox高度和宽度的loss
                                  batch['ind'], batch['wh'], batch['wight_mask']) / opt.num_stacks
+        # wh_loss += self.crit_reg(output['wh'], batch['reg_mask'],               # 2. 人脸bbox高度和宽度的loss
+        #                          batch['ind'], batch['wh'], batch['wight_mask']) / opt.num_stacks
+
       if opt.reg_offset and opt.off_weight > 0:
         off_loss += self.crit_reg(output['hm_offset'], batch['reg_mask'],             # 3. 人脸bbox中心点下采样，所需要的偏差补偿
                                   batch['ind'], batch['hm_offset'], batch['wight_mask']) / opt.num_stacks

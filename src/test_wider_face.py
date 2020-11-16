@@ -57,7 +57,7 @@ def test_wider_Face(model_path):
     event_list = wider_face_mat['event_list']
     file_list = wider_face_mat['file_list']
 
-    save_path = '../output/1112_face_hp_mobilev2_10_800_800_bs12_5e-4_ebest-1/'
+    save_path = '../output/1115_se_face_hp_mobilev2_10_800_800_bs12_5e-4-e140/'
 
 
     # save_path = '../output/1105_pre_face_hp_mobilev2_10_800_800_sig_bs12_5e-5_e180/'
@@ -88,6 +88,11 @@ def test_wider_Face(model_path):
     # opt = opts().init('--task multi_pose --arch shufflenetv2_10 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
     #      save_path, MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
 
+    # opt = opts().init('--task multi_pose --arch mobilev3fast_10 --head_conv 24 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    #      save_path, MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
+
+    
+
     detector = detector_factory[opt.task](opt)
 
     for index, event in enumerate(event_list):
@@ -116,7 +121,7 @@ if __name__ == '__main__':
     # MODEL_PATH = '../exp/multi_pose/1106_s_face_hp_mobilev2_10_800_800_bs12_5e-4/model_90.pth'
     # MODEL_PATH = '../exp/multi_pose/1105_pre_face_hp_mobilev2_10_800_800_sig_bs12_5e-5/model_180.pth'
 
-    MODEL_PATH = '../exp/multi_pose/1112_face_hp_mobilev2_10_800_800_bs12_5e-4/model_best.pth'
+    MODEL_PATH = '../exp/multi_pose/1115_se_face_hp_mobilev2_10_800_800_bs12_5e-4/model_140.pth'
 
     # MODEL_PATH = '../exp/multi_pose/1104_nopre_face_hp_mobilev2_10_800_800_sig_bs12_5e-4/model_140.pth'
     # MODEL_PATH = '../exp/ctdet/1002_opt2_face_hp_mobilev2_5/model_160.psth'

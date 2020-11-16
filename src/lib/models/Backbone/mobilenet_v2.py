@@ -118,11 +118,20 @@ class MobileNetV2(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.ones_(m.weight)
                 nn.init.zeros_(m.bias)
+        self.semodule1 = SeModule(24)
+        self.semodule2 = SeModule(32)
+        self.semodule3 = SeModule(92)
 
     def forward(self, x):
         y = []
         for id in self.feat_id:
             x = self.__getattr__("feature_%d"%id)(x)
+            if id == 0:
+                x = self.semodule1(x)
+            elif id == 1:
+                x = self.semodule2(x)
+            elif id == 2:
+                x = self.semodule3(x)
             y.append(x)
         return y
 

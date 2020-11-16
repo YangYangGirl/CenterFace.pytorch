@@ -41,7 +41,11 @@ class MultiPoseDetector(BaseDetector):
       
       if self.opt.flip_test:
         output['hm'] = (output['hm'][0:1] + flip_tensor(output['hm'][1:2])) / 2
-        output['wh'] = (output['wh'][0:1] + flip_tensor(output['wh'][1:2])) / 2
+        if opt.ltrb:
+          #  output['ltrb'] = (output['wh'][0:1] + flip_tensor(output['wh'][1:2])) / 2
+          print("to do!")
+        else:
+          output['wh'] = (output['wh'][0:1] + flip_tensor(output['wh'][1:2])) / 2
         output['hps'] = (output['hps'][0:1] + 
           flip_lr_off(output['hps'][1:2], self.flip_idx)) / 2
         hm_hp = (hm_hp[0:1] + flip_lr(hm_hp[1:2], self.flip_idx)) / 2 \
@@ -50,7 +54,7 @@ class MultiPoseDetector(BaseDetector):
         hp_offset = hp_offset[0:1] if hp_offset is not None else None
       
       dets = centerface_decode(
-        output['hm'], output['wh'], output['landmarks'],
+        output['hm'], wh=output['wh'], ltrb=output['ltrb'], kps=output['landmarks'],
         reg=reg, K=self.opt.K)
 
     if return_time:

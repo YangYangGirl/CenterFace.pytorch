@@ -492,7 +492,7 @@ def ctdet_decode(heat, wh=None, ltrb=None, reg=None, cat_spec_wh=False, K=100):
             bboxes = torch.cat([xs - ltrb[..., 0:1], 
                                 ys - ltrb[..., 1:2],
                                 xs + ltrb[..., 2:3], 
-                                ys + ltrb[..., 3:4]], dim=2)
+                                ys + ltrb[..., 3:4]], dim=4)
     else:
         wh = _tranpose_and_gather_feat(wh, inds)
         if cat_spec_wh:
@@ -616,7 +616,7 @@ def threshold_choose(scores, threshold):
 
 
 def centerface_decode(
-        heat, wh, kps, reg=None, hm_hp=None, hp_offset=None, K=100):
+        heat, wh=None, ltrb=None, kps=None, reg=None, hm_hp=None, hp_offset=None, K=100):
     batch, cat, height, width = heat.size()
     num_joints = kps.shape[1] // 2
     # heat = torch.sigmoid(heat)
@@ -636,15 +636,27 @@ def centerface_decode(
         xs = xs_int.view(batch, K, 1) + 0.5
         ys = ys_int.view(batch, K, 1) + 0.5
 
-    wh = _tranpose_and_gather_feat(wh, inds)  # 人脸bbox矩形框的宽高
-    wh = wh.view(batch, K, 2)                                             # 2. wh,第一种方式
-    wh = wh.exp() * 4.                                                    # 2. wh,第二种式式
-    clses = clses.view(batch, K, 1).float()
-    scores = scores.view(batch, K, 1)
-    bboxes = torch.cat([xs - wh[..., 0:1] / 2,
-                        ys - wh[..., 1:2] / 2,
-                        xs + wh[..., 0:1] / 2,
-                        ys + wh[..., 1:2] / 2], dim=2)
+    if ltrb != None:
+        wh = _tranpose_and_gather_feat(wh, inds)  # 人脸bbox矩形框的宽高
+        wh = wh.view(batch, K, 4)                                             # 2. wh,第一种方式
+        # ltrb = ltrb.exp() * 4.                                                    # 2. wh,第二种式式ss
+        ltrb = ltrb.view(batch, K, 4)
+        clses  = clses.view(batch, K, 1).float()
+        scores = scores.view(batch, K, 1)
+        bboxes = torch.cat([xs - ltrb[..., 0:1], 
+                            ys - ltrb[..., 1:2],
+                            xs + ltrb[..., 2:3], 
+                            ys + ltrb[..., 3:4]], dim=4)
+    else:
+        wh = _tranpose_and_gather_feat(wh, inds)  # 人脸bbox矩形框的宽高
+        wh = wh.view(batch, K, 2)                                             # 2. wh,第一种方式
+        wh = wh.exp() * 4.                                                    # 2. wh,第二种式式
+        clses = clses.view(batch, K, 1).float()
+        scores = scores.view(batch, K, 1)
+        bboxes = torch.cat([xs - wh[..., 0:1] / 2,
+                            ys - wh[..., 1:2] / 2,
+                            xs + wh[..., 0:1] / 2,
+                            ys + wh[..., 1:2] / 2], dim=2)
 
     kps = _tranpose_and_gather_feat(kps, inds)                                      # 3. 人脸关键点
     kps = kps.view(batch, K, num_joints * 2)

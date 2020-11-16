@@ -2,6 +2,8 @@ from torch import nn
 import torch.utils.model_zoo as model_zoo
 from collections import OrderedDict
 import math
+import torch.nn.functional as F
+from torch.nn import init
 
 
 __all__ = ['MobileNetV2']
@@ -11,6 +13,10 @@ model_urls = {
     'mobilenet_v2': 'https://download.pytorch.org/models/mobilenet_v2-b0353104.pth',
 }
 
+class hsigmoid(nn.Module):
+    def forward(self, x):
+        out = F.relu6(x + 3, inplace=True) / 6
+        return out
 
 def _make_divisible(v, divisor, min_value=None):
     """
@@ -168,6 +174,21 @@ def fill_fc_weights(layers):
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
 
+class SeModule(nn.Module):
+    def __init__(self, in_size, reduction=4):
+        super(SeModule, self).__init__()
+        self.se = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(in_size, in_size // reduction, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.BatchNorm2d(in_size // reduction),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_size // reduction, in_size, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.BatchNorm2d(in_size),
+            hsigmoid()
+        )
+
+    def forward(self, x):
+        return x * self.se(x)
 
 class IDAUp(nn.Module):
     def __init__(self, out_dim, channel):
@@ -185,6 +206,7 @@ class IDAUp(nn.Module):
                     nn.BatchNorm2d(out_dim,eps=0.001,momentum=0.1),
                     nn.ReLU(inplace=True))
         # self.smooth = nn.Conv2d(out_dim, out_dim, kernel_size=3, stride=1, padding=1)
+        self.semodule = SeModule(channel)
 
     def forward(self, layers):
         
@@ -194,7 +216,7 @@ class IDAUp(nn.Module):
         x = self.up(layers[0])
         # print("after up ==============")
         # print(x.shape)
-        y = self.conv(layers[1])
+        y = self.conv(self.semodule(layers[1]))
         # print("after conv ==============")
         # print(y.shape)
         # out = self.smooth(x + y)

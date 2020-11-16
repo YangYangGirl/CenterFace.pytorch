@@ -6,7 +6,9 @@ import torch.nn.functional as F
 from torch import nn
 from torch.nn import init
 
-from .DCNv2.dcn_v2 import DCN
+import sys
+sys.path.append('./')
+from ..networks.DCNv2.dcn_v2 import DCN
 
 
 class DeformConv(nn.Module):
@@ -127,7 +129,7 @@ def fill_up_weights(up):
 
 
 class MobileNetV3(nn.Module):
-    def __init__(self, final_kernel):
+    def __init__(self, heads, head_conv, n_class=1000, input_size=224, width_mult=1., final_kernel=1):
         super(MobileNetV3, self).__init__()
         self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(16)
@@ -164,7 +166,26 @@ class MobileNetV3(nn.Module):
         self.ida_up = IDAUp(24, [24, 40, 160, 960],
                             [2 ** i for i in range(4)])
 
-        self.init_params()
+        self.heads = heads
+        for head in self.heads:
+            classes = self.heads[head]
+            if head == 'hm':
+                fc = nn.Sequential(
+                    nn.Conv2d(head_conv, classes,
+                              kernel_size=1, stride=1,
+                              padding=0, bias=True),
+                    nn.Sigmoid()
+                )
+            else:
+                fc = nn.Conv2d(head_conv, classes,
+                              kernel_size=1, stride=1,
+                              padding=0, bias=True)
+            # if 'hm' in head:
+            #     fc.bias.data.fill_(-2.19)
+            # else:
+            #     nn.init.normal_(fc.weight, std=0.001)
+            #     nn.init.constant_(fc.bias, 0)
+            self.__setattr__(head, fc)
         
     def init_params(self):
         for m in self.modules():
@@ -188,16 +209,20 @@ class MobileNetV3(nn.Module):
         out3 = self.bneck3(out2)
         out3 = self.hs2(self.bn2(self.conv2(out3)))
         out = [out0, out1, out2, out3]
+
         y = []
         for i in range(4):
             y.append(out[i].clone())
         self.ida_up(y, 0, len(y))
 
-        return y[-1]
+        ret = {}
+        for head in self.heads:
+            ret[head] = self.__getattr__(head)(y[-1])
+        return [ret]
         
     
-def get_mobilev3_pose_net(num_layers, cfg):
+def get_mobilev3_pose_net(num_layers, heads, head_conv=24):
 
-  model = MobileNetV3(final_kernel=1)
+  model = MobileNetV3(heads, head_conv, width_mult=1.0)
   
   return model
