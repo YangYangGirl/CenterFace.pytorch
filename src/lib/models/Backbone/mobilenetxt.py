@@ -65,6 +65,32 @@ class ConvBNReLU(nn.Sequential):
         )
 
 
+class IDAUp(nn.Module):
+    def __init__(self, o, channels, up_f):
+        super(IDAUp, self).__init__()
+        for i in range(1, len(channels)):
+            c = channels[i]
+            f = int(up_f[i])
+            proj = DeformConv(c, o)
+            node = DeformConv(o, o)
+
+            up = nn.ConvTranspose2d(o, o, f * 2, stride=f,
+                                    padding=f // 2, output_padding=0,
+                                    groups=o, bias=False)
+            fill_up_weights(up)
+            setattr(self, 'proj_' + str(i), proj)
+            setattr(self, 'up_' + str(i), up)
+            setattr(self, 'node_' + str(i), node)
+
+    def forward(self, layers, startp, endp):
+        for i in range(startp + 1, endp):
+            upsample = getattr(self, 'up_' + str(i - startp))
+            project = getattr(self, 'proj_' + str(i - startp))
+            layers[i] = upsample(project(layers[i]))
+            node = getattr(self, 'node_' + str(i - startp))
+            layers[i] = node(layers[i] + layers[i - 1])
+
+
 class SandGlass(nn.Module):
     def __init__(self, inp, oup, stride, expand_ratio, identity_tensor_multiplier=1.0, norm_layer=None):
         super(SandGlass, self).__init__()
@@ -115,6 +141,48 @@ class SandGlass(nn.Module):
             return out
 
 
+class DeformConv(nn.Module):
+    def __init__(self, chi, cho):
+        super(DeformConv, self).__init__()
+        self.actf = nn.Sequential(
+            nn.BatchNorm2d(cho, momentum=0.1),
+            nn.ReLU(inplace=True)
+        )
+        self.conv = DCN(chi, cho, kernel_size=(3, 3), stride=1, padding=1, dilation=1, deformable_groups=1)
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.actf(x)
+        return x
+
+
+class IDAUp(nn.Module):
+
+    def __init__(self, o, channels, up_f):
+        super(IDAUp, self).__init__()
+        for i in range(1, len(channels)):
+            c = channels[i]
+            f = int(up_f[i])
+            proj = DeformConv(c, o)
+            node = DeformConv(o, o)
+
+            up = nn.ConvTranspose2d(o, o, f * 2, stride=f,
+                                    padding=f // 2, output_padding=0,
+                                    groups=o, bias=False)
+            fill_up_weights(up)
+            setattr(self, 'proj_' + str(i), proj)
+            setattr(self, 'up_' + str(i), up)
+            setattr(self, 'node_' + str(i), node)
+
+    def forward(self, layers, startp, endp):
+        for i in range(startp + 1, endp):
+            upsample = getattr(self, 'up_' + str(i - startp))
+            project = getattr(self, 'proj_' + str(i - startp))
+            layers[i] = upsample(project(layers[i]))
+            node = getattr(self, 'node_' + str(i - startp))
+            layers[i] = node(layers[i] + layers[i - 1])
+
+            
 class MobileNeXt(nn.Module):
     def __init__(
         self, heads, head_conv, 
@@ -148,7 +216,7 @@ class MobileNeXt(nn.Module):
             norm_layer = nn.BatchNorm2d
 
         input_channel = 32
-        last_channel = 64
+        last_channel = 1280
 
         # building first layer
         input_channel = _make_divisible(input_channel * width_mult, round_nearest)
@@ -158,22 +226,27 @@ class MobileNeXt(nn.Module):
         if sand_glass_setting is None:
             sand_glass_setting = [
                 # t, c,  b, s
-                # [2, 96,  1, 2],
-                # [6, 144, 1, 1],
-                # [6, 192, 3, 2],
-                # [6, 288, 3, 2],
-                # [6, 384, 4, 1],
-                # [6, 576, 4, 2],
-                # [6, 960, 2, 1],
-                [2, 16,  1, 2],
-                [6, 24, 1, 1],
-                [6, 32, 3, 2],
-                [6, 64, 3, 2],
-                [6, 96, 4, 1],
-                [6, 160, 4, 2],
-                [6, 320, 2, 1],
+                [2, 96,  1, 2],
+                [6, 144, 1, 1],
+                [6, 192, 3, 2],
+                [6, 288, 3, 2],
+                [6, 384, 4, 1],
+                [6, 576, 4, 2],
+                [6, 960, 2, 1],
+                # [2, 16,  1, 2],
+                # [6, 24, 1, 1],
+                # [6, 32, 3, 2],
+                # [6, 64, 3, 2],
+                # [6, 96, 4, 1],
+                # [6, 160, 4, 2],
+                # [6, 320, 2, 1],
                 [6, self.last_channel / width_mult, 1, 1],
             ]
+
+        self.ida_up = IDAUp(96, [96, 192, 384, 960],
+                            [2 ** i for i in range(4)])
+        # self.ida_up = IDAUp(24, [24, 40, 160, 960],
+        #                     [2 ** i for i in range(4)])
 
         # only check the first element, assuming user knows t,c,n,s are required
         if len(sand_glass_setting) == 0 or len(sand_glass_setting[0]) != 4:
@@ -286,13 +359,48 @@ class MobileNeXt(nn.Module):
     def _forward_impl(self, x):
         # This exists since TorchScript doesn't support inheritance, so the superclass method
         # (this one) needs to have a name other than `forward` that can be accessed in a subclass
-        x = self.features(x)
+        # print(self.features)
+        outs = []
+        for f in self.features:
+            x = f(x)
+            outs.append(x)
+            # print(x.shape)
+        
+        #0 torch.Size([6, 96, 200, 200]) 
+        #1 torch.Size([6, 144, 200, 200]) 
+        #2 torch.Size([6, 192, 100, 100])
+        #3 torch.Size([6, 192, 100, 100])
+        #4 torch.Size([6, 192, 100, 100])
+        #5 torch.Size([6, 288, 50, 50])
+        #6 torch.Size([6, 288, 50, 50])
+        #7 torch.Size([6, 288, 50, 50])
+        #8 torch.Size([6, 384, 50, 50])
+        #9 torch.Size([6, 384, 50, 50])
+        #10 torch.Size([6, 384, 50, 50])
+        #11 torch.Size([6, 384, 50, 50])
+        #12 torch.Size([6, 576, 25, 25])
+        #13 torch.Size([6, 576, 25, 25])
+        #14 torch.Size([6, 576, 25, 25])
+        #15 torch.Size([6, 576, 25, 25])
+        #16 torch.Size([6, 960, 25, 25])
+        #17 torch.Size([6, 960, 25, 25])
+        #18 torch.Size([6, 1280, 25, 25])
+
+        # y = [outs[1], outs[4], outs[11], outs[18]]
+        y = [outs[1], outs[4], outs[11], outs[18]]
+
+        self.ida_up(y, 0, len(y))
+
+        # x = nn.functional.adaptive_avg_pool2d(x, 1).reshape(x.shape[0], -1)
+
         # Cannot use "squeeze" as batch-size can be 1 => must use reshape with x.shape[0]
         # x = nn.functional.adaptive_avg_pool2d(x, 1).reshape(x.shape[0], -1)
-        x = self.deconv_layers(x)
+        # print("==", x.shape)  #[6, 64, 25, 25]
+        # x = self.deconv_layers(x)
+        # print("!!", x.shape)  #[6, 64, 200, 200])
         ret = {}
         for head in self.heads:
-            ret[head] = self.__getattr__(head)(x)
+            ret[head] = self.__getattr__(head)(y[-1])
         return [ret]
 
     def forward(self, x):
@@ -305,8 +413,8 @@ def mobilextnet_10(pretrained=True, **kwargs):
 
 
 def get_mobilext_net(num_layers, heads, head_conv=24):
-  model = MobileNeXt(heads, head_conv, width_mult=1.0)
-  return model
+    model = MobileNeXt(heads, head_conv, width_mult=1.0)
+    return model
 
 if __name__ == "__main__":
     model = MobileNeXt(width_mult=1.0, identity_tensor_multiplier=1.0)

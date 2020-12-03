@@ -1,5 +1,7 @@
 TensorRT/torch2trt
 TensorRT/MNN
+evaluate/vis*
+evaluate/heatmap*
 /output_1028/
 /output_raw
 /exp

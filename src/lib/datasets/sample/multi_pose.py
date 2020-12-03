@@ -21,6 +21,7 @@ from torch._six import container_abcs, string_classes, int_classes
 
 np_str_obj_array_pattern = re.compile(r'[SaUO]')
 
+
 class MultiPoseDataset(data.Dataset):
   def _coco_box_to_bbox(self, box):
     bbox = np.array([box[0], box[1], box[0] + box[2], box[1] + box[3]],
@@ -188,13 +189,17 @@ class MultiPoseDataset(data.Dataset):
         # wh[k] = 1. * w, 1. * h                                                    # 2. centernet的方式
         wh[k] = np.log(1. * w / 4), np.log(1. * h / 4)                              # 2. 人脸bbox的高度和宽度,centerface论文的方式
 
-        if self.opt.ltrb and pts[2][2] > 0:
-          ltrb[k] = ct_int[0] - bbox[0], ct_int[1] - bbox[1], bbox[2] - ct_int[0], bbox[3] - ct_int[1]   # may be need log
+        if self.opt.ltrb: # and pts[2][2] > 0:
+          l, t, r, b = ct[0] - bbox[0], ct[1] - bbox[1], bbox[2] - ct[0], bbox[3] - ct[1]
+          # l, t, r, b = ct_int[0] - bbox[0], ct_int[1] - bbox[1], bbox[2] - ct_int[0], bbox[3] - ct_int[1]
+          ltrb[k] = np.log(1. * l / 2), np.log(1. * t / 2), np.log(1. * r / 2), np.log(1. * b / 2)   
+
           ltrb_mask[k] = 1
 
         ind[k] = ct_int[1] * output_res + ct_int[0]         # 人脸bbox在1/4特征图中的索引
         reg[k] = ct - ct_int                                # 3. 人脸bbox中心点整数化的偏差
         reg_mask[k] = 1                                     # 是否需要用于计算误差
+        
         # if w*h <= 20:
         #     wight_mask[k] = 15
 

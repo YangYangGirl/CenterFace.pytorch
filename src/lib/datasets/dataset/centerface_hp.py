@@ -44,7 +44,7 @@ class FACEHP(data.Dataset):
       self.annot_path = os.path.join(
         self.data_dir, 'annotations', 
         '{}_wider_face.json').format(_ann_name[split])
-    self.max_objs = 32
+    self.max_objs = 600
     self._data_rng = np.random.RandomState(123)
     self._eig_val = np.array([0.2141788, 0.01817699, 0.00341571],
                              dtype=np.float32)
@@ -75,7 +75,6 @@ class FACEHP(data.Dataset):
     return float("{:.2f}".format(x))
 
   def convert_eval_format(self, all_bboxes):
-    # import pdb; pdb.set_trace()
     detections = []
     for image_id in all_bboxes:
       for cls_ind in all_bboxes[image_id]:
@@ -107,7 +106,6 @@ class FACEHP(data.Dataset):
   def save_results(self, results, save_dir):
     json.dump(self.convert_eval_format(results), 
               open('{}/results.json'.format(save_dir), 'w'))
-
 
   def run_eval(self, results, save_dir):
     # result_json = os.path.join(opt.save_dir, "results.json")

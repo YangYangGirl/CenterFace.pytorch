@@ -14,6 +14,7 @@ import numpy as np
 from scipy.io import loadmat
 from bbox import bbox_overlaps
 from IPython import embed
+import cv2
 
 
 def get_gt_boxes(gt_dir):
@@ -90,6 +91,35 @@ def read_pred_file(filepath):
     return img_file.split('/')[-1], boxes
 
 
+def compute_iou(rec1, rec2):
+    """
+    computing IoU
+    :param rec1: (y0, x0, y1, x1), which reflects
+            (top, left, bottom, right)
+    :param rec2: (y0, x0, y1, x1)
+    :return: scala value of IoU
+    """
+    # computing area of each rectangles
+    S_rec1 = (rec1[2] - rec1[0]) * (rec1[3] - rec1[1])
+    S_rec2 = (rec2[2] - rec2[0]) * (rec2[3] - rec2[1])
+ 
+    # computing the sum_area
+    sum_area = S_rec1 + S_rec2
+ 
+    # find the each edge of intersect rectangle
+    left_line = max(rec1[1], rec2[1])
+    right_line = min(rec1[3], rec2[3])
+    top_line = max(rec1[0], rec2[0])
+    bottom_line = min(rec1[2], rec2[2])
+ 
+    # judge if there is an intersect
+    if left_line >= right_line or top_line >= bottom_line:
+        return 0
+    else:
+        intersect = (right_line - left_line) * (bottom_line - top_line)
+        return (intersect / (sum_area - intersect))*1.0
+
+
 def get_preds(pred_dir):
     events = os.listdir(pred_dir)
     boxes = dict()
@@ -153,12 +183,12 @@ def image_eval(pred, gt, ignore, iou_thresh):
 
     for h in range(_pred.shape[0]):
 
-        gt_overlap = overlaps[h]
-        max_overlap, max_idx = gt_overlap.max(), gt_overlap.argmax()
+        gt_overlap = overlaps[h]      
+        max_overlap, max_idx = gt_overlap.max(), gt_overlap.argmax()  #取出与预测框重叠度最高的gt框
         if max_overlap >= iou_thresh:
             if ignore[max_idx] == 0:
-                recall_list[max_idx] = -1
-                proposal_list[h] = -1
+                recall_list[max_idx] = -1     #有预测框被阈值错误过滤，未检测出来
+                proposal_list[h] = -1         #该预测框被阈值过滤
             elif recall_list[max_idx] == 0:
                 recall_list[max_idx] = 1
 
@@ -170,7 +200,6 @@ def image_eval(pred, gt, ignore, iou_thresh):
 def img_pr_info(thresh_num, pred_info, proposal_list, pred_recall):
     pr_info = np.zeros((thresh_num, 2)).astype('float')
     for t in range(thresh_num):
-
         thresh = 1 - (t+1)/thresh_num
         r_index = np.where(pred_info[:, 4] >= thresh)[0]
         if len(r_index) == 0:
@@ -212,6 +241,100 @@ def voc_ap(rec, prec):
     return ap
 
 
+def vis_badcase(pred_info, gt_boxes, ori_image_path, target_path="vis-0.2"):
+    have_hitted=[]
+    gt_have_hitted=[]
+    ori_image = cv2.imread(ori_image_path)
+    pred_image = cv2.imread(ori_image_path)
+    h, w, c = ori_image.shape
+    event_name = ori_image_path.split('/', 7)[-2]
+    pic_name = ori_image_path.split('/', 7)[-1]
+    hp_img = cv2.resize(cv2.imread('./heatmap-0.3/' + ori_image_path.split('/', 6)[-1]), (w, h))
+    hp_pure_img = cv2.resize(cv2.imread('./heatmap-0.3/' + event_name + '/' + 'pure_' + pic_name), (w, h))
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    iou_threshold = 0.4
+    score_threshold = 0.2
+    keep_idx = pred_info[:, 4] > score_threshold
+    pred_info = pred_info[keep_idx]
+    
+
+    res = {'GtNums': 0, 'TP': 0, 'FP': 0, 'TN': 0, 'PNums': 0, "recall": 0, "Precision": 0}
+
+    for gt_idx, obj in enumerate(gt_boxes):
+        x1_, y1_, w_, h_ = obj[0], obj[1], obj[2], obj[3] 
+        x2_ = x1_ + w_
+        y2_ = y1_ + h_
+        res["GtNums"] += 1
+        ori_image = cv2.rectangle(ori_image, (int(x1_), int(y1_)), (int(x2_), int(y2_)), (255, 255, 0), 2)
+
+        match_index = -1
+        max_iou = 0
+        match_box =[]
+        
+        for idx in range(pred_info.shape[0]):
+            x1, y1, w, h, s = pred_info[idx]
+            x2 = x1 + w
+            y2 = y1 + h
+            pred_image = cv2.rectangle(pred_image, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
+
+            if idx not in have_hitted:
+                iou = compute_iou([x1_, y1_, x2_, y2_], [x1, y1, x2, y2]) 
+                if iou > iou_threshold:
+                    if iou > max_iou:
+                        max_iou = iou
+                        match_index = idx
+
+            if match_index != -1:
+                res["TP"] += 1
+                have_hitted.append(match_index)
+                gt_have_hitted.append(gt_idx)
+                x1, y1, w, h, s = pred_info[match_index]
+                x2 = x1 + w
+                y2 = y1 + h
+                pred_image = cv2.putText(pred_image, "tp:" + " "+ str(s)[:3], (int(x1), int(y1)), font, 1, (255, 0, 0), 2)
+                pred_image = cv2.rectangle(pred_image, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
+
+    for j in range(pred_info.shape[0]):
+        x1, y1, w, h, s = pred_info[j]
+        x2 = x1 + w
+        y2 = y1 + h
+        if j not in have_hitted:
+            res["FP"] += 1
+            pred_image = cv2.putText(pred_image,
+                                "fp:" + " "+ str(s)[:3],
+                                (int(x2), int(y2)), font, 1, (0, 0, 255), 2)
+            pred_image = cv2.rectangle(pred_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+
+    for j in range(gt_boxes.shape[0]):
+        x1, y1, w, h = gt_boxes[j]
+        x2 = x1 + w
+        y2 = y1 + h
+        if j not in gt_have_hitted:
+            res["TN"] += 1
+            # ori_image = cv2.putText(ori_image,
+            #                     "tn:" +" ",
+            #                     (int(x2), int(y2)), font, 1, (0, 255, 0), 2)
+            ori_image = cv2.rectangle(ori_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+
+        if not os.path.exists(target_path):
+            os.mkdir(target_path)
+
+        cv2.imwrite(target_path + "/" + os.path.basename(ori_image_path), np.concatenate((np.hstack((pred_image, ori_image)) , np.hstack((hp_img, hp_pure_img))), axis=0))
+
+    if res["GtNums"] == 0 or res["PNums"] == 0:
+        # print("=========== r['GtNums', 'PNums'] =========", res["GtNums"], res["PNums"])
+        res["recall"] = -1
+        res["Precision"] = -1
+
+    else:
+        res["recall"] = res["TP"] / res["GtNums"] 
+        res["Precision"] = res["TP"] / res["PNums"] 
+        print(res) 
+
+        return None
+
+
 def evaluation(pred, gt_path, all, iou_thresh=0.4):
     pred = get_preds(pred)
     norm_score(pred)
@@ -229,7 +352,7 @@ def evaluation(pred, gt_path, all, iou_thresh=0.4):
             count_face = 0
             pr_curve = np.zeros((thresh_num, 2)).astype('float')
             # [hard, medium, easy]
-            pbar = tqdm.tqdm(range(event_num))  #  61
+            pbar = tqdm.tqdm(range(event_num))   # event_num = 61
             error_count = 0
             for i in pbar:
                 pbar.set_description('Processing {}'.format(settings[setting_id]))
@@ -237,17 +360,19 @@ def evaluation(pred, gt_path, all, iou_thresh=0.4):
                 img_list = file_list[i][0]
                 pred_list = pred[event_name]  
                 sub_gt_list = gt_list[i][0]
-                print("shape of sub_gt_list is: ",sub_gt_list.shape)
                 gt_bbx_list = facebox_list[i][0]
-
+                
                 for j in range(len(img_list)):
                     try:
                         pred_info = pred_list[str(img_list[j][0][0])] 
+                        ori_image_path = "../data/widerface/retinaface_gt_v1.1/val/images/" + str(event_list[i][0][0]) + '/' + str(img_list[j][0][0]) + '.jpg'
                     except:
                         error_count+=1
                         continue
-
                     gt_boxes = gt_bbx_list[j][0].astype('float')
+
+                    # vis_badcase(pred_info, gt_boxes, ori_image_path)
+
                     keep_index = sub_gt_list[j][0]
                     count_face += len(keep_index)
                     if len(gt_boxes) == 0 or len(pred_info) == 0:
@@ -260,7 +385,6 @@ def evaluation(pred, gt_path, all, iou_thresh=0.4):
                     _img_pr_info = img_pr_info(thresh_num, pred_info, proposal_list, pred_recall)
 
                     pr_curve += _img_pr_info
-            print("error_count is: ",error_count)
             pr_curve = dataset_pr_info(thresh_num, pr_curve, count_face)
 
             propose = pr_curve[:, 0]

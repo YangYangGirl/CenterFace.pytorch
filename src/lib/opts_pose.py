@@ -56,7 +56,7 @@ class opts(object):
                              help='save model to disk every 5 epochs.')
     self.parser.add_argument('--metric', default='loss', 
                              help='main metric to save best model')
-    self.parser.add_argument('--vis_thresh', type=float, default=0.4,
+    self.parser.add_argument('--vis_thresh', type=float, default=0.9,
                              help='visualization threshold.')
     self.parser.add_argument('--debugger_theme', default='white', 
                              choices=['white', 'black'])
@@ -86,6 +86,8 @@ class opts(object):
     # train
     self.parser.add_argument('--ltrb', action='store_true',
                              help='judge the dimention of wh')
+    self.parser.add_argument('--giou', action='store_true',
+                             help='judge whether use giou loss to regress')
     self.parser.add_argument('--lr', type=float, default=1.25e-4,
                              help='learning rate for batch size 32.')
     self.parser.add_argument('--lr_step', type=str, default='30,80',
@@ -111,7 +113,7 @@ class opts(object):
                              help='multi scale test augmentation.')
     self.parser.add_argument('--nms', action='store_true',
                              help='run nms in testing.')
-    self.parser.add_argument('--K', type=int, default=200,
+    self.parser.add_argument('--K', type=int, default=600,
                              help='max number of output objects.') 
     self.parser.add_argument('--not_prefetch_test', action='store_true',
                              help='not use parallal data pre-processing.')
@@ -343,6 +345,12 @@ class opts(object):
         opt.heads.update({'ltrb': 4 if not opt.cat_spec_wh else 2 * opt.num_classes})
       else:
         opt.heads.update({'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes})
+      # if opt.reg_offset:
+      #   opt.heads.update({'reg': 2})
+      # if opt.hm_hp:
+      #   opt.heads.update({'hm_hp': dataset.num_joints})
+      # if opt.reg_hp_offset:
+      #   opt.heads.update({'hp_offset': 2})
     else:
       assert 0, 'task not defined!'
     print('heads', opt.heads)

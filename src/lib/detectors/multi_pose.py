@@ -53,9 +53,18 @@ class MultiPoseDetector(BaseDetector):
         reg = reg[0:1] if reg is not None else None
         hp_offset = hp_offset[0:1] if hp_offset is not None else None
       
-      dets = centerface_decode(
-        output['hm'], wh=output['wh'], ltrb=output['ltrb'], kps=output['landmarks'],
-        reg=reg, K=self.opt.K)
+      if self.opt.ltrb:
+        dets = centerface_decode(
+          output['hm'], ltrb=output['ltrb'], kps=output['landmarks'],
+          reg=reg, K=self.opt.K)
+      else:
+        dets = centerface_decode(
+          output['hm'], wh=output['wh'], kps=output['landmarks'],
+          reg=reg, K=self.opt.K)
+
+      # dets = centerface_decode(
+      #   output['hm'], wh=output['wh'], ltrb=output['ltrb'], kps=output['landmarks'],
+      #   reg=reg, K=self.opt.K)
 
     if return_time:
       return output, dets, forward_time
@@ -69,7 +78,6 @@ class MultiPoseDetector(BaseDetector):
       meta['out_height'], meta['out_width'])
     for j in range(1, self.num_classes + 1):
       dets[0][j] = np.array(dets[0][j], dtype=np.float32).reshape(-1, 15)             # 关键点数+5=15
-      # import pdb; pdb.set_trace()
       dets[0][j][:, :4] /= scale
       dets[0][j][:, 5:] /= scale
     return dets[0]

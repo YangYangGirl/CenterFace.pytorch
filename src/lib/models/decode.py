@@ -489,8 +489,8 @@ def ctdet_decode(heat, wh=None, ltrb=None, reg=None, cat_spec_wh=False, K=100):
             ltrb = ltrb.view(batch, K, 4)
             clses  = clses.view(batch, K, 1).float()
             scores = scores.view(batch, K, 1)
-            bboxes = torch.cat([xs - ltrb[..., 0:1], 
-                                ys - ltrb[..., 1:2],
+            bboxes = torch.cat([xs + ltrb[..., 0:1], 
+                                ys + ltrb[..., 1:2],
                                 xs + ltrb[..., 2:3], 
                                 ys + ltrb[..., 3:4]], dim=4)
     else:
@@ -636,17 +636,17 @@ def centerface_decode(
         xs = xs_int.view(batch, K, 1) + 0.5
         ys = ys_int.view(batch, K, 1) + 0.5
 
-    if ltrb != None:
-        wh = _tranpose_and_gather_feat(wh, inds)  # 人脸bbox矩形框的宽高
-        wh = wh.view(batch, K, 4)                                             # 2. wh,第一种方式
-        # ltrb = ltrb.exp() * 4.                                                    # 2. wh,第二种式式ss
+    if ltrb is not None:
+        ltrb = _tranpose_and_gather_feat(ltrb, inds)  # 人脸bbox矩形框的宽高
+        ltrb = ltrb.view(batch, K, 4) 
+        ltrb = ltrb.exp() * 2.                                                    # 2. wh,第二种式式
         ltrb = ltrb.view(batch, K, 4)
         clses  = clses.view(batch, K, 1).float()
         scores = scores.view(batch, K, 1)
         bboxes = torch.cat([xs - ltrb[..., 0:1], 
                             ys - ltrb[..., 1:2],
                             xs + ltrb[..., 2:3], 
-                            ys + ltrb[..., 3:4]], dim=4)
+                            ys + ltrb[..., 3:4]], dim=2)
     else:
         wh = _tranpose_and_gather_feat(wh, inds)  # 人脸bbox矩形框的宽高
         wh = wh.view(batch, K, 2)                                             # 2. wh,第一种方式

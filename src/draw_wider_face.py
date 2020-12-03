@@ -2,7 +2,7 @@ import sys
 import os
 import scipy.io as sio
 import cv2
-
+from scipy.io import loadmat
 
 path = os.path.dirname(__file__)
 CENTERNET_PATH = os.path.join(path,'../src/lib')
@@ -26,6 +26,26 @@ def test_img(MODEL_PATH):
 
     img = '../readme/000388.jpg'
     ret = detector.run(img)['results']
+
+
+def get_gt_boxes(gt_dir):
+    """ gt dir: (wider_face_val.mat, wider_easy_val.mat, wider_medium_val.mat, wider_hard_val.mat)"""
+
+    gt_mat = loadmat(os.path.join(gt_dir, 'wider_face_val.mat'))
+    hard_mat = loadmat(os.path.join(gt_dir, 'wider_hard_val.mat'))
+    medium_mat = loadmat(os.path.join(gt_dir, 'wider_medium_val.mat'))
+    easy_mat = loadmat(os.path.join(gt_dir, 'wider_easy_val.mat'))
+
+    facebox_list = gt_mat['face_bbx_list']
+    event_list = gt_mat['event_list']
+    file_list = gt_mat['file_list']
+
+    hard_gt_list = hard_mat['gt_list']
+    medium_gt_list = medium_mat['gt_list']
+    easy_gt_list = easy_mat['gt_list']
+
+    return facebox_list, event_list, file_list, hard_gt_list, medium_gt_list, easy_gt_list
+
 
 def test_vedio(model_path, vedio_path=None):
     debug = -1            # return the result image with draw
@@ -57,8 +77,7 @@ def test_wider_Face(model_path):
     event_list = wider_face_mat['event_list']
     file_list = wider_face_mat['file_list']
 
-    # save_path = '../output/1127_bifpn_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4_ebest-1/'
-    save_path = '../output/1128fpn_face_hp_mobilext_10_800_800_bs12_1e-4_ebest-1/' 
+    save_path = '../output/1119_noattsmall_obj600_face_hp_mobilev3_10_800_800_bs12_5e-4_K600_ebest-1/'
     #save_path = '../output/1119_noattsmall_obj314_face_hp_mobilev3_10_800_800_bs12_5e-4_K600_ebest-1/'
 
 
@@ -90,14 +109,9 @@ def test_wider_Face(model_path):
     # opt = opts().init('--task multi_pose --arch shufflenetv2_10 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
     #      save_path, MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
 
-    #--not_hm_hp 
-    opt = opts().init('--task multi_pose --arch mobilext_10 --head_conv 96 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    opt = opts().init('--task multi_pose --arch mobilev3_10 --head_conv 24 --K 600 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
          save_path, MODEL_PATH, debug, threshold, input_h, input_w).split(' '))
-
-    # opt = opts().init('--task multi_pose --arch mobilev3_10 --head_conv 24 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
-    #      save_path, MODEL_PATH, debug, threshold, input_h, input_w).split(' '))
     
-
     detector = detector_factory[opt.task](opt)
 
     for index, event in enumerate(event_list):
@@ -112,25 +126,28 @@ def test_wider_Face(model_path):
             res = detector.run(img_path)
 
             dets = res['results']
-            img_np = np.transpose(np.array(res['image'].cpu()), (1, 2, 0)) * 255
-            # hm_pseudo = res['hm'][0].cpu()
-            # hm_vis = hm_pseudo[0] * 255
-            # hm_vis = np.clip(hm_vis, 0, 255)
-            # hm_vis = np.array(hm_vis, dtype=np.uint8)
-            # hm_vis = np.expand_dims(hm_vis, axis=-1)
-            # hm_vis = np.repeat(hm_vis, 3, axis=-1)
-            # hm_vis = cv2.resize(hm_vis, (input_w, input_h)) [:, :, 0]
+            img_np = np.transpose(np.array(res['image'].cpu()), (1, 2, 0)) * 255 
+            hm_pseudo = res['hm'][0].cpu()
+            hm_vis = 255 - (hm_pseudo[0] - 0.5) * 255 * 2 
+            hm_vis = np.clip(hm_vis, 0, 255)
+            hm_vis = np.array(hm_vis, dtype=np.uint8)
+            hm_vis = np.expand_dims(hm_vis, axis=-1)
+            hm_vis = np.repeat(hm_vis, 3, axis=-1)
+            # import pdb; pdb.set_trace()
+            hm_vis = cv2.resize(hm_vis, (input_w, input_h)) 
+            # [:, :, 0]
             # colored_hm = cv2.applyColorMap(hm_vis, cv2.COLORMAP_JET)
-            # masked_image =  colored_hm * 1 + img_np * 0
-            # img_name = 'heatmap/' + im_dir 
-
-            # if os.path.exists(img_name):
-            #     os.mkdir(img_name)
-
-            # cv2.imwrite(zip_name, masked_image)
-
+            colored_hm = hm_vis
+            masked_image =  colored_hm * 0.9 + img_np * 0.1
+            # import pdb; pdb.set_trace()
             
+            img_name = '../evaluate/heatmap-0.3/' + im_dir 
 
+            if not os.path.exists(img_name):
+                os.mkdir(img_name)
+
+            cv2.imwrite('../evaluate/heatmap-0.3/' + zip_name, masked_image)
+            cv2.imwrite('../evaluate/heatmap-0.3/' + '%s/pure_%s.jpg' % (im_dir, im_name) , colored_hm)
 
             f = open(save_path + im_dir + '/' + im_name + '.txt', 'w')
             f.write('{:s}\n'.format('%s/%s.jpg' % (im_dir, im_name)))
@@ -148,9 +165,7 @@ if __name__ == '__main__':
     # MODEL_PATH = '../exp/multi_pose/1105_pre_face_hp_mobilev2_10_800_800_sig_bs12_5e-5/model_180.pth'
 
     #MODEL_PATH = '../exp/multi_pose/1119_noattsmall_obj314_face_hp_mobilev3_10_800_800_bs12_5e-4/model_best.pth'
-    
-    MODEL_PATH = '../exp/multi_pose/1128fpn_face_hp_mobilext_10_800_800_bs12_1e-4/model_best.pth'
-    # MODEL_PATH = '../exp/multi_pose/1127_bifpn_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4/model_best.pth'
+    MODEL_PATH = '../exp/multi_pose/1119_noattsmall_obj600_face_hp_mobilev3_10_800_800_bs12_5e-4/model_best.pth'
 
     # MODEL_PATH = '../exp/multi_pose/1104_nopre_face_hp_mobilev2_10_800_800_sig_bs12_5e-4/model_140.pth'
     # MODEL_PATH = '../exp/ctdet/1002_opt2_face_hp_mobilev2_5/model_160.psth'

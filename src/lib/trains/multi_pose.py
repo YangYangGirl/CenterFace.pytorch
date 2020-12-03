@@ -60,14 +60,15 @@ class MultiPoseLoss(torch.nn.Module):
       hm_loss += self.crit(output['hm'], batch['hm']) / opt.num_stacks          # 1. focal loss,求目标的中心，
       if opt.wh_weight > 0:
         if opt.ltrb:
-          wh_loss += self.giou_loss(output['ltrb'], batch['reg_mask'],               # 2. 人脸bbox高度和宽度的loss
-                                 batch['ind'], batch['ltrb'], batch['wight_mask'])/ opt.num_stacks
-
+          if opt.giou:
+            wh_loss += self.giou_loss(output['ltrb'].exp() * 2, batch['reg_mask'],               # 2. 人脸bbox高度和宽度的loss
+                                  batch['ind'], batch['ltrb'].exp() * 2, batch['wight_mask'], target_off=batch['hm_offset'], pre_off=output['hm_offset'])/ opt.num_stacks
+          else:
+            wh_loss += self.crit_reg(output['ltrb'], batch['reg_mask'],               # 2. 人脸bbox高度和宽度的loss
+                                 batch['ind'], batch['ltrb'], batch['ltrb_mask']) / opt.num_stacks
         else:
-          wh_loss += self.giou_loss(output['wh'], batch['reg_mask'],               # 2. 人脸bbox高度和宽度的loss
+          wh_loss += self.crit_reg(output['wh'], batch['reg_mask'],               # 2. 人脸bbox高度和宽度的loss
                                  batch['ind'], batch['wh'], batch['wight_mask']) / opt.num_stacks
-        # wh_loss += self.crit_reg(output['wh'], batch['reg_mask'],               # 2. 人脸bbox高度和宽度的loss
-        #                          batch['ind'], batch['wh'], batch['wight_mask']) / opt.num_stacks
 
       if opt.reg_offset and opt.off_weight > 0:
         off_loss += self.crit_reg(output['hm_offset'], batch['reg_mask'],             # 3. 人脸bbox中心点下采样，所需要的偏差补偿

@@ -110,7 +110,6 @@ class BaseDetector(object):
       if not pre_processed:
         images, meta = self.pre_process(image, scale, meta)
       else:
-        # import pdb; pdb.set_trace()
         images = pre_processed_images['images'][scale][0]
         meta = pre_processed_images['meta'][scale]
         meta = {k: v.numpy()[0] for k, v in meta.items()}
@@ -120,7 +119,6 @@ class BaseDetector(object):
       pre_time += pre_process_time - scale_start_time
       
       output, dets, forward_time = self.process(images, return_time=True)
-
       torch.cuda.synchronize()
       net_time += forward_time - pre_process_time
       decode_time = time.time()
@@ -142,6 +140,8 @@ class BaseDetector(object):
     merge_time += end_time - post_process_time
     tot_time += end_time - start_time
 
+
+
     if self.opt.debug >= 1:
       self.show_results(debugger, image, results)
     
@@ -153,6 +153,6 @@ class BaseDetector(object):
     # else:
     #   plot_img = None
     
-    return {'results': results, 'tot': tot_time, 'load': load_time,
+    return {'image': images[0], 'hm':output['hm'], 'results': results, 'tot': tot_time, 'load': load_time,
             'pre': pre_time, 'net': net_time, 'dec': dec_time,
             'post': post_time, 'merge': merge_time, 'plot_img':plot_img}
