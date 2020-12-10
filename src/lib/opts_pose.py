@@ -16,7 +16,7 @@ class opts(object):
                              help='coco | kitti | coco_hp | pascal | pig | face | facehp')
     self.parser.add_argument('--exp_id', default='dla')
     self.parser.add_argument('--test', action='store_true')
-    self.parser.add_argument('--debug', type=int, default=0,
+    self.parser.add_argument('--debug', type=int, default=2,
                              help='level of visualization.'
                                   '-1: return the result image' 
                                   '1: only show the final detection results'
@@ -253,7 +253,7 @@ class opts(object):
 
     if opt.head_conv == -1: # init default head_conv
       
-      opt.head_conv = 64 if ('dla' in opt.arch or 'shuffle' in opt.arch) else 64
+      opt.head_conv = 256 if ('dla' in opt.arch or 'shuffle' in opt.arch) else 64
     opt.pad = 127 if 'hourglass' in opt.arch else 31
     opt.num_stacks = 2 if opt.arch == 'hourglass' else 1
 
@@ -338,19 +338,19 @@ class opts(object):
     #     opt.heads.update({'hm_hp': dataset.num_joints})
     #   if opt.reg_hp_offset:
     #     opt.heads.update({'hp_offset': 2})
-    elif opt.task == 'multi_pose':
+    elif opt.task == 'multi_pose' or 'multi_pose_whole':
       opt.flip_idx = dataset.flip_idx
-      opt.heads = {'hm': opt.num_classes, 'hm_offset': 2, 'landmarks': dataset.num_joints * 2}
+      opt.heads = {'hm': opt.num_classes, 'hps': dataset.num_joints*2, 'hm_offset': 2, 'landmarks': dataset.num_joints * 2}
       if opt.ltrb:
         opt.heads.update({'ltrb': 4 if not opt.cat_spec_wh else 2 * opt.num_classes})
       else:
         opt.heads.update({'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes})
-      # if opt.reg_offset:
-      #   opt.heads.update({'reg': 2})
-      # if opt.hm_hp:
-      #   opt.heads.update({'hm_hp': dataset.num_joints})
-      # if opt.reg_hp_offset:
-      #   opt.heads.update({'hp_offset': 2})
+      if opt.reg_offset:
+        opt.heads.update({'reg': 2})
+      if opt.hm_hp:
+        opt.heads.update({'hm_hp': dataset.num_joints})
+      if opt.reg_hp_offset:
+        opt.heads.update({'hp_offset': 2})
     else:
       assert 0, 'task not defined!'
     print('heads', opt.heads)

@@ -388,6 +388,7 @@ class MobileNeXt(nn.Module):
 
         # y = [outs[1], outs[4], outs[11], outs[18]]
         y = [outs[1], outs[4], outs[11], outs[18]]
+        # y = [outs[1], outs[4], outs[11], outs[18]]
 
         self.ida_up(y, 0, len(y))
 

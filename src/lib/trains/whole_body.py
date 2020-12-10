@@ -14,9 +14,9 @@ from utils.oracle_utils import gen_oracle_map
 from .base_trainer import BaseTrainer
 from models.decode import multi_pose_decode, centerface_decode
 
-class MultiPoseLoss(torch.nn.Module):
+class WholeBodyLoss(torch.nn.Module):
   def __init__(self, opt):
-    super(MultiPoseLoss, self).__init__()
+    super(WholeBodyLoss, self).__init__()
     self.crit = FocalLoss()
     self.giou_loss = GIoULoss()
     self.crit_hm_hp = torch.nn.MSELoss() if opt.mse_loss else FocalLoss()
@@ -98,13 +98,13 @@ class MultiPoseLoss(torch.nn.Module):
                   'wh_loss': wh_loss, 'off_loss': off_loss}
     return loss, loss_stats
 
-class MultiPoseTrainer(BaseTrainer):
+class WholeBodyTrainer(BaseTrainer):
   def __init__(self, opt, model, optimizer=None):
-    super(MultiPoseTrainer, self).__init__(opt, model, optimizer=optimizer)
+    super( WholeBodyTrainer, self).__init__(opt, model, optimizer=optimizer)
   
   def _get_losses(self, opt):
     loss_states = ['loss', 'hm_loss', 'lm_loss', 'wh_loss', 'off_loss']
-    loss = MultiPoseLoss(opt)
+    loss = WholeBodyLoss(opt)
     return loss_states, loss
 
   def debug(self, batch, output, iter_id):
@@ -118,10 +118,10 @@ class MultiPoseTrainer(BaseTrainer):
     dets = dets.detach().cpu().numpy().reshape(1, -1, dets.shape[2])
 
     dets[:, :, :4] *= opt.input_res / opt.output_res
-    dets[:, :, 5:39] *= opt.input_res / opt.output_res
+    dets[:, :, 5:47] *= opt.input_res / opt.output_res
     dets_gt = batch['meta']['gt_det'].numpy().reshape(1, -1, dets.shape[2])
     dets_gt[:, :, :4] *= opt.input_res / opt.output_res
-    dets_gt[:, :, 5:39] *= opt.input_res / opt.output_res
+    dets_gt[:, :, 5:47] *= opt.input_res / opt.output_res
     for i in range(1):
       debugger = Debugger(
         dataset=opt.dataset, ipynb=(opt.debug==3), theme=opt.debugger_theme)
@@ -138,14 +138,14 @@ class MultiPoseTrainer(BaseTrainer):
         if dets[i, k, 4] > opt.center_thresh:
           debugger.add_coco_bbox(dets[i, k, :4], dets[i, k, -1],
                                  dets[i, k, 4], img_id='out_pred')
-          debugger.add_coco_hp(dets[i, k, 5:39], img_id='out_pred')
+          debugger.add_coco_hp(dets[i, k, 5:47], img_id='out_pred')
 
       debugger.add_img(img, img_id='out_gt')
       for k in range(len(dets_gt[i])):
         if dets_gt[i, k, 4] > opt.center_thresh:
           debugger.add_coco_bbox(dets_gt[i, k, :4], dets_gt[i, k, -1],
                                  dets_gt[i, k, 4], img_id='out_gt')
-          debugger.add_coco_hp(dets_gt[i, k, 5:39], img_id='out_gt')
+          debugger.add_coco_hp(dets_gt[i, k, 5:47], img_id='out_gt')
 
       if opt.hm_hp:
         pred = debugger.gen_colormap_hp(output['hm_hp'][i].detach().cpu().numpy())

@@ -6,8 +6,10 @@ from .sample.ddd import DddDataset
 from .sample.exdet import EXDetDataset
 from .sample.ctdet import CTDetDataset
 from .sample.multi_pose import MultiPoseDataset
+from .sample.whole_body import WholeBodyDataset
 
 from .dataset.coco import COCO
+from .dataset.wholebody import WHOLEBODY
 from .dataset.pascal import PascalVOC
 from .dataset.kitti import KITTI
 from .dataset.coco_hp import COCOHP
@@ -25,14 +27,16 @@ dataset_factory = {
   'pig': PIG,
   'pig2': PIG2,
   'face': FACE,
-  'facehp': FACEHP
+  'facehp': FACEHP,
+  'wholebody': WHOLEBODY
 }
 
 _sample_factory = {
   'exdet': EXDetDataset,
   'ctdet': CTDetDataset,
   'ddd': DddDataset,
-  'multi_pose': MultiPoseDataset
+  'multi_pose': MultiPoseDataset,
+  'multi_pose_whole': WholeBodyDataset
 }
 
 
