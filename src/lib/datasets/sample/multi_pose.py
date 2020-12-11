@@ -224,9 +224,9 @@ class MultiPoseDataset(data.Dataset):
               hp_ind[k * num_joints + j] = pt_int[1] * output_res + pt_int[0]   # 索引
               hp_mask[k * num_joints + j] = 1                                   # 计算损失的mask
               if self.opt.dense_hp:
-                # must be before draw center hm gaussian
+                must be before draw center hm gaussian
                 draw_dense_reg(dense_kps[j], hm[cls_id], ct_int, 
-                               pts[j, :2] - ct_int, radius, is_offset=True)
+                              pts[j, :2] - ct_int, radius, is_offset=True)
                 draw_gaussian(dense_kps_mask[j], ct_int, radius)
               draw_gaussian(hm_hp[j], pt_int, hp_radius)                    # 1. 关键点高斯map
               if ann['bbox'][2]*ann['bbox'][3] <= 16.0:                   # 太小的人脸忽略
@@ -239,6 +239,16 @@ class MultiPoseDataset(data.Dataset):
       hm = hm * 0 + 0.9999
       reg_mask *= 0
       kps_mask *= 0
+
+    hm_vis = 255 - hm_hp[0] * 255
+    hm_vis = np.clip(hm_vis, 0, 255)
+    hm_vis = np.array(hm_vis, dtype=np.uint8)
+    hm_vis = np.expand_dims(hm_vis, axis=-1)
+    hm_vis = np.repeat(hm_vis, 3, axis=-1)
+    hm_vis = cv2.resize(hm_vis, (width, height)) 
+    masked_image =  hm_vis * 0.9 + img * 0.1
+    cv2.imwrite('debug_face_hm_hp.jpg', masked_image)
+
     ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh,
            'landmarks': kps, 'hps_mask': kps_mask, 'wight_mask': wight_mask, 'ltrb': ltrb, 'ltrb_mask': ltrb_mask}
     if self.opt.dense_hp:

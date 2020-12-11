@@ -212,6 +212,16 @@ class WholeBodyDataset(data.Dataset):
       hm = hm * 0 + 0.9999
       reg_mask *= 0
       kps_mask *= 0
+
+    hm_vis = 255 - hm[0] * 255
+    hm_vis = np.clip(hm_vis, 0, 255)
+    hm_vis = np.array(hm_vis, dtype=np.uint8)
+    hm_vis = np.expand_dims(hm_vis, axis=-1)
+    hm_vis = np.repeat(hm_vis, 3, axis=-1)
+    hm_vis = cv2.resize(hm_vis, (width, height)) 
+    masked_image =  hm_vis * 0.9 + img * 0.1
+    cv2.imwrite('debug_hm.jpg', masked_image)
+
     ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh,
            'landmarks': kps, 'hps_mask': kps_mask, 'wight_mask': wight_mask, 'ltrb': ltrb, 'ltrb_mask': ltrb_mask}
     if self.opt.dense_hp:
