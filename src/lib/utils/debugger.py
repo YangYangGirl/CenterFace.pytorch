@@ -89,6 +89,24 @@ class Debugger(object):
       self.names = pig_class_name
     elif num_classes == 1 or dataset == 'facehp':
       self.names = face_class_name
+    elif num_classes ==1 or dataset == 'wholebody':
+      self.names = whole_body_class_name
+      self.num_joints = 21
+      self.edges = [[0, 1], [0, 2], [1, 3], [2, 4], 
+                    [3, 5], [4, 6], [5, 6], 
+                    [5, 7], [7, 9], [6, 8], [8, 10], 
+                    [5, 11], [6, 12], [11, 12], 
+                    [11, 13], [13, 15], [12, 14], [14, 16]]
+      self.ec = [(255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255), 
+                 (255, 0, 0), (0, 0, 255), (255, 0, 255),
+                 (255, 0, 0), (255, 0, 0), (0, 0, 255), (0, 0, 255),
+                 (255, 0, 0), (0, 0, 255), (255, 0, 255),
+                 (255, 0, 0), (255, 0, 0), (0, 0, 255), (0, 0, 255)]
+      self.colors_hp = [(255, 0, 255), (255, 0, 0), (0, 0, 255), 
+        (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
+        (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
+        (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
+        (255, 0, 0), (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255)]
 
     num_classes = len(self.names)
     self.down_ratio=down_ratio
@@ -501,6 +519,8 @@ coco_class_name = [
 pig_class_name = ['pig']
 
 face_class_name = ['face']
+
+whole_body_class_name = ['hand']
 
 color_list = np.array(
         [

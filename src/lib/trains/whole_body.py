@@ -32,8 +32,8 @@ class WholeBodyLoss(torch.nn.Module):
     lm_loss, off_loss, hm_hp_loss, hp_offset_loss = 0, 0, 0, 0
     for s in range(opt.num_stacks):
       output = outputs[s]
-      if not opt.mse_loss:
-          output['hm'] = _sigmoid(output['hm'])
+      # if not opt.mse_loss:
+      #     output['hm'] = _sigmoid(output['hm'])
       # if not opt.mse_loss and (opt.arch == 'dla_34' or opt.arch == 'mobilev2_10'):
       #   output['hm'] = _sigmoid(output['hm'])
       # if opt.hm_hp and not opt.mse_loss:

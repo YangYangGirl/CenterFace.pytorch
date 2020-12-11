@@ -332,7 +332,6 @@ def multipose_collate(batch):
       tres = np.zeros_like(batch[index], dtype=batch[index].dtype)
       tres[:batch[i].shape[0]] = batch[i]
       res.append(tres)
-
   return res
 
 

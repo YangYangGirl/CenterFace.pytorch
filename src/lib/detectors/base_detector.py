@@ -140,14 +140,10 @@ class BaseDetector(object):
     merge_time += end_time - post_process_time
     tot_time += end_time - start_time
 
-
-
-    if self.opt.debug >= 1:
+    if self.opt.debug >= -1:
       self.show_results(debugger, image, results)
-    
       plot_img = self.return_results(debugger, image, results)
       cv2.imwrite('../output/imgs/' + 'pred_{}'.format(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]) + ".png", plot_img)
-      plot_img = self.return_results(debugger, image, results)
 
     
     return {'image': images[0], 'hm':output['hm'], 'results': results, 'tot': tot_time, 'load': load_time,

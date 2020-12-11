@@ -16,7 +16,7 @@ class opts(object):
                              help='coco | kitti | coco_hp | pascal | pig | face | facehp')
     self.parser.add_argument('--exp_id', default='dla')
     self.parser.add_argument('--test', action='store_true')
-    self.parser.add_argument('--debug', type=int, default=2,
+    self.parser.add_argument('--debug', type=int, default=-1,
                              help='level of visualization.'
                                   '-1: return the result image' 
                                   '1: only show the final detection results'
@@ -383,6 +383,16 @@ class opts(object):
         'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
         'dataset': 'facehp', 'num_joints': 5,
         'flip_idx': [[0, 1], [3, 4]]},
+
+      'multi_pose_whole': {
+        # 'default_resolution': [320, 320], 'num_classes': 1, 
+        # 'default_resolution': [512, 512], 'num_classes': 1, 
+        # 'default_resolution': [640, 640], 'num_classes': 1,
+        # 'default_resolution': [480, 640], 'num_classes': 1,
+        'default_resolution': [800, 800], 'num_classes': 1,
+        'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
+        'dataset': 'wholebody', 'num_joints': 21,
+        'flip_idx': []},
 
       'ddd': {'default_resolution': [384, 1280], 'num_classes': 3, 
                 'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225],

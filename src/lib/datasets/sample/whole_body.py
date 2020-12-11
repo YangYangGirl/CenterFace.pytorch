@@ -35,6 +35,7 @@ class WholeBodyDataset(data.Dataset):
     return border // i
 
   def __getitem__(self, index):
+    index = 14946
     img_id = self.images[index]
     file_name = self.coco.loadImgs(ids=[img_id])[0]['file_name']
     img_path = os.path.join(self.img_dir, file_name)
@@ -47,6 +48,21 @@ class WholeBodyDataset(data.Dataset):
         anns = np.random.choice(anns, num_objs)
 
     img = cv2.imread(img_path)
+
+    # point_size = 1
+    # point_color = (0, 0, 255) # BGR
+    # thickness = 0 # 可以为 0 、4、8
+    # origin_img = img
+    # cv2.imwrite("origin.jpg", origin_img)
+
+    # for i, a in enumerate(anns):
+    #     bbox = self._coco_box_to_bbox(a['lefthand_box'])   # [x, y, w, h]
+    #     pts = np.array(a['lefthand_kpts'], np.float32).reshape(21, 3)
+    #     origin_img = cv2.rectangle(origin_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+    #     for p in pts:
+    # 	      origin_img = cv2.circle(origin_img, (p[0], p[1]), point_size, point_color, thickness)
+    # cv2.imwrite("debug.jpg", origin_img)
+
     img, anns = Data_anchor_sample(img, anns)
     height, width = img.shape[0], img.shape[1]
     c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
@@ -123,7 +139,7 @@ class WholeBodyDataset(data.Dataset):
     gt_det = []
     for k in range(num_objs):
       ann = anns[k]
-      bbox = self._coco_box_to_bbox(ann['bbox'])
+      bbox = self._coco_box_to_bbox(ann['lefthand_box'])   # [x, y, w, h]
       cls_id = int(ann['category_id']) - 1
       pts = np.array(ann['lefthand_kpts'], np.float32).reshape(num_joints, 3)
       if flipped:
@@ -185,8 +201,9 @@ class WholeBodyDataset(data.Dataset):
                                pts[j, :2] - ct_int, radius, is_offset=True)
                 draw_gaussian(dense_kps_mask[j], ct_int, radius)
               draw_gaussian(hm_hp[j], pt_int, hp_radius)                    # 1. 关键点高斯map
-              if ann['bbox'][2]*ann['bbox'][3] <= 16.0:                   # 太小的人脸忽略
-                kps_mask[k, j * 2: j * 2 + 2] = 0
+              # if ann['bbox'][2]*ann['bbox'][3] >= 16.0:                   # 太小的人脸忽略
+              #   kps_mask[k, j * 2: j * 2 + 2] = 0
+                # print("==== file_name, index ====", file_name, index)
         draw_gaussian(hm[cls_id], ct_int, radius)
         gt_det.append([ct[0] - w / 2, ct[1] - h / 2, 
                        ct[0] + w / 2, ct[1] + h / 2, 1] + 
@@ -281,7 +298,6 @@ def default_collate(batch):
 def multipose_collate(batch):
   objects_dims = [d.shape[0] for d in batch]
   index = objects_dims.index(max(objects_dims))
-
   # one_dim = True if len(batch[0].shape) == 1 else False
   res = []
   for i in range(len(batch)):

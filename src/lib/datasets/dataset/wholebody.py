@@ -84,7 +84,7 @@ class WHOLEBODY(data.Dataset):
           bbox_out  = list(map(self._to_float, bbox))
           keypoints = np.concatenate([
             np.array(dets[5:47], dtype=np.float32).reshape(-1, 2), 
-            np.ones((21, 1), dtype=np.float32)], axis=1).reshape(51).tolist()
+            np.ones((21, 1), dtype=np.float32)], axis=1).reshape(63).tolist()
           keypoints  = list(map(self._to_float, keypoints))
 
           detection = {
