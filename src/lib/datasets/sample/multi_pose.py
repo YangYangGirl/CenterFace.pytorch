@@ -47,8 +47,20 @@ class MultiPoseDataset(data.Dataset):
         anns = np.random.choice(anns, num_objs)
 
     img = cv2.imread(img_path)
-
     img, anns = Data_anchor_sample(img, anns)
+
+    # origin_img = img_
+    # print("origin_img", origin_img.shape)
+    # cv2.imwrite("origin.jpg", origin_img)
+    # for i, a in enumerate(anns):
+    #     bbox = self._coco_box_to_bbox(a['bbox'])   # [x, y, w, h]
+    #     pts = np.array(a['keypoints'], np.float32).reshape(5, 3)
+    #     origin_img = cv2.rectangle(origin_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+    #     for p in pts:
+    # 	      origin_img = cv2.circle(origin_img, (p[0], p[1]), 1, (0, 0, 255), 0)
+    # cv2.imwrite("debug_face_yxyy.jpg", origin_img)
+
+
 
     # # for test the keypoint order
     # img1 = cv2.flip(img,1)
@@ -57,12 +69,12 @@ class MultiPoseDataset(data.Dataset):
     #   bbox = self._coco_box_to_bbox(ann['bbox'])
     #   bbox[[0, 2]] = width - bbox[[2, 0]] - 1
     #   pts = np.array(ann['keypoints'], np.float32).reshape(5, 3)
-    #
+    
     #   # for flip
     #   pts[:, 0] = width - pts[:, 0] - 1
     #   for e in self.flip_idx:
     #     pts[e[0]], pts[e[1]] = pts[e[1]].copy(), pts[e[0]].copy()
-    #
+    
     #   # for debug show
     #   def add_coco_bbox(image, bbox, conf=1):
     #     txt = '{}{:.1f}'.format('person', conf)
@@ -70,7 +82,7 @@ class MultiPoseDataset(data.Dataset):
     #     cv2.rectangle(image, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 255), 2)
     #     cv2.putText(image, txt, (bbox[0], bbox[1] - 2),
     #                 font, 0.5, (0, 255, 0), thickness=1, lineType=cv2.LINE_AA)
-    #
+    
     #   def add_coco_hp(image, points, keypoints_prob=1):
     #     for j in range(5):
     #       if keypoints_prob > 0.5:
@@ -85,12 +97,13 @@ class MultiPoseDataset(data.Dataset):
     #         elif j == 4:
     #           cv2.circle(image, (points[j, 0], points[j, 1]), 2, (0, 0, 0), -1)
     #     return image
-    #
+    
     #   bbox = [int(x) for x in bbox]
     #   add_coco_bbox(img1, bbox )
     #   add_coco_hp(img1, pts)
-    #   cv2.imshow('mat', img1)
-    #   cv2.waitKey(5000)
+    #   cv2.imwrite("debug_face.jpg", img1)#, origin_img)
+
+
 
     height, width = img.shape[0], img.shape[1]
     c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
@@ -224,7 +237,7 @@ class MultiPoseDataset(data.Dataset):
               hp_ind[k * num_joints + j] = pt_int[1] * output_res + pt_int[0]   # 索引
               hp_mask[k * num_joints + j] = 1                                   # 计算损失的mask
               if self.opt.dense_hp:
-                must be before draw center hm gaussian
+                # must be before draw center hm gaussian
                 draw_dense_reg(dense_kps[j], hm[cls_id], ct_int, 
                               pts[j, :2] - ct_int, radius, is_offset=True)
                 draw_gaussian(dense_kps_mask[j], ct_int, radius)
@@ -240,6 +253,10 @@ class MultiPoseDataset(data.Dataset):
       reg_mask *= 0
       kps_mask *= 0
 
+
+
+
+
     hm_vis = 255 - hm_hp[0] * 255
     hm_vis = np.clip(hm_vis, 0, 255)
     hm_vis = np.array(hm_vis, dtype=np.uint8)
@@ -248,6 +265,10 @@ class MultiPoseDataset(data.Dataset):
     hm_vis = cv2.resize(hm_vis, (width, height)) 
     masked_image =  hm_vis * 0.9 + img * 0.1
     cv2.imwrite('debug_face_hm_hp.jpg', masked_image)
+
+
+
+
 
     ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh,
            'landmarks': kps, 'hps_mask': kps_mask, 'wight_mask': wight_mask, 'ltrb': ltrb, 'ltrb_mask': ltrb_mask}

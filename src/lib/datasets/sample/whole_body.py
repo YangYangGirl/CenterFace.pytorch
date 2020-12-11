@@ -35,12 +35,14 @@ class WholeBodyDataset(data.Dataset):
     return border // i
 
   def __getitem__(self, index):
-    index = 14946
     img_id = self.images[index]
     file_name = self.coco.loadImgs(ids=[img_id])[0]['file_name']
     img_path = os.path.join(self.img_dir, file_name)
     ann_ids = self.coco.getAnnIds(imgIds=[img_id])
     anns = self.coco.loadAnns(ids=ann_ids)
+    for i in range(len(anns)):
+      anns[i]['lefthand_box'] = [anns[i]['lefthand_box'][0], anns[i]['lefthand_box'][1], anns[i]['lefthand_box'][0] + anns[i]['lefthand_box'][2], anns[i]['lefthand_box'][1] + anns[i]['lefthand_box'][3]]
+
     num_objs = len(anns)
     # num_objs = min(len(anns), self.max_objs)
     if num_objs > self.max_objs:
@@ -49,19 +51,16 @@ class WholeBodyDataset(data.Dataset):
 
     img = cv2.imread(img_path)
 
-    # point_size = 1
-    # point_color = (0, 0, 255) # BGR
-    # thickness = 0 # 可以为 0 、4、8
     # origin_img = img
-    # cv2.imwrite("origin.jpg", origin_img)
-
+    # cv2.imwrite("origin_body.jpg", origin_img)
     # for i, a in enumerate(anns):
     #     bbox = self._coco_box_to_bbox(a['lefthand_box'])   # [x, y, w, h]
     #     pts = np.array(a['lefthand_kpts'], np.float32).reshape(21, 3)
     #     origin_img = cv2.rectangle(origin_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
     #     for p in pts:
-    # 	      origin_img = cv2.circle(origin_img, (p[0], p[1]), point_size, point_color, thickness)
-    # cv2.imwrite("debug.jpg", origin_img)
+    # 	      origin_img = cv2.circle(origin_im
+    #         g, (p[0], p[1]), 1, (0, 0, 255), 0)
+    # cv2.imwrite("debug_body.jpg", origin_img)
 
     img, anns = Data_anchor_sample(img, anns)
     height, width = img.shape[0], img.shape[1]
@@ -157,6 +156,7 @@ class WholeBodyDataset(data.Dataset):
         radius = self.opt.hm_gauss if self.opt.mse_loss else max(0, int(radius)) 
         ct = np.array(
           [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)       # 人脸的中心坐标
+
         ct_int = ct.astype(np.int32)                        # 整数化
         # wh[k] = 1. * w, 1. * h                                                    # 2. centernet的方式
         wh[k] = np.log(1. * w / 4), np.log(1. * h / 4)                              # 2. 人脸bbox的高度和宽度,centerface论文的方式
@@ -213,14 +213,16 @@ class WholeBodyDataset(data.Dataset):
       reg_mask *= 0
       kps_mask *= 0
 
-    hm_vis = 255 - hm[0] * 255
-    hm_vis = np.clip(hm_vis, 0, 255)
-    hm_vis = np.array(hm_vis, dtype=np.uint8)
-    hm_vis = np.expand_dims(hm_vis, axis=-1)
-    hm_vis = np.repeat(hm_vis, 3, axis=-1)
-    hm_vis = cv2.resize(hm_vis, (width, height)) 
-    masked_image =  hm_vis * 0.9 + img * 0.1
-    cv2.imwrite('debug_hm.jpg', masked_image)
+    # #  yy add
+    # hm_vis = 255 - hm[0] * 255
+    # hm_vis = np.clip(hm_vis, 0, 255)
+    # hm_vis = np.array(hm_vis, dtype=np.uint8)
+    # hm_vis = np.expand_dims(hm_vis, axis=-1)
+    # hm_vis = np.repeat(hm_vis, 3, axis=-1)
+    # hm_vis = cv2.resize(hm_vis, (width, height)) 
+    # masked_image =  hm_vis * 0.9 + img * 0.1
+    # masked_image = cv2.circle(masked_image, (ct[0], ct[1]), 1, (0, 0, 255), 0)
+    # cv2.imwrite('debug_ct_add_hm.jpg', masked_image)
 
     ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh,
            'landmarks': kps, 'hps_mask': kps_mask, 'wight_mask': wight_mask, 'ltrb': ltrb, 'ltrb_mask': ltrb_mask}
@@ -244,8 +246,8 @@ class WholeBodyDataset(data.Dataset):
                np.zeros((1, 40), dtype=np.float32)
       meta = {'c': c, 's': s, 'gt_det': gt_det, 'img_id': img_id}
       ret['meta'] = meta
-    return ret
 
+    return ret
 
 _use_shared_memory = False
 

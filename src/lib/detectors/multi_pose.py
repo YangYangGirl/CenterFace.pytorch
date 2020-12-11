@@ -110,7 +110,27 @@ class MultiPoseDetector(BaseDetector):
   def show_results(self, debugger, image, results):
     debugger.add_img(image, img_id='multi_pose')
     for bbox in results[1]:
-      if bbox[4] > self.opt.vis_thresh:
+      if bbox[4] > 0.51:#self.opt.vis_thresh:
+
+        # debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
+        print("begin "*5, "add coco")
+        debugger.add_coco_hp(bbox[5:39], img_id='multi_pose')
+
+        debug_image = image
+        points = bbox[5:39]
+        points = np.array(points, dtype=np.int32).reshape(5, 2)
+        for j in range(5):
+          debug_image = cv2.circle(debug_image,
+                    (points[j, 0], points[j, 1]), 3, (0, 0, 255), 1)
+        # for person pose edege show
+        # for j, e in enumerate(self.edges):
+        #   if points[e].min() > 0:
+        #     self.imgs[img_id] = cv2.line(self.imgs[img_id], (points[e[0], 0], points[e[0], 1]),
+        #                   (points[e[1], 0], points[e[1], 1]), self.ec[j], 2,
+        #                   lineType=cv2.LINE_AA)
+        cv2.imwrite("yxyy-face-1-0.51.jpg", debug_image)
+
+
         debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
         debugger.add_coco_hp(bbox[5:39], img_id='multi_pose')
     debugger.show_all_imgs(pause=self.pause)
@@ -118,7 +138,7 @@ class MultiPoseDetector(BaseDetector):
   def return_results(self, debugger, image, results):
     debugger.add_img(image, img_id='multi_pose')
     for bbox in results[1]:
-      if bbox[4] > self.opt.vis_thresh:
+      if bbox[4] > 0.02:#self.opt.vis_thresh:
         debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
         debugger.add_coco_hp(bbox[5:39], img_id='multi_pose')
     return debugger.return_img(img_id='multi_pose')

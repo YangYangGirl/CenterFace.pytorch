@@ -96,12 +96,12 @@ class Debugger(object):
                     [3, 5], [4, 6], [5, 6], 
                     [5, 7], [7, 9], [6, 8], [8, 10], 
                     [5, 11], [6, 12], [11, 12], 
-                    [11, 13], [13, 15], [12, 14], [14, 16]]
+                    [11, 13], [13, 15], [12, 14], [14, 16], [13, 15], [15, 17], [16, 18], [18, 20]]
       self.ec = [(255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255), 
                  (255, 0, 0), (0, 0, 255), (255, 0, 255),
                  (255, 0, 0), (255, 0, 0), (0, 0, 255), (0, 0, 255),
                  (255, 0, 0), (0, 0, 255), (255, 0, 255),
-                 (255, 0, 0), (255, 0, 0), (0, 0, 255), (0, 0, 255)]
+                 (255, 0, 0), (255, 0, 0), (0, 0, 255), (0, 0, 255), (255, 0, 0), (0, 0, 255), (0, 0, 255), (255, 0, 0)]
       self.colors_hp = [(255, 0, 255), (255, 0, 0), (0, 0, 255), 
         (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
         (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
@@ -240,11 +240,11 @@ class Debugger(object):
       cv2.circle(self.imgs[img_id],
                  (points[j, 0], points[j, 1]), 3, self.colors_hp[j], -1)
     # for person pose edege show
-    # for j, e in enumerate(self.edges):
-    #   if points[e].min() > 0:
-    #     cv2.line(self.imgs[img_id], (points[e[0], 0], points[e[0], 1]),
-    #                   (points[e[1], 0], points[e[1], 1]), self.ec[j], 2,
-    #                   lineType=cv2.LINE_AA)
+    for j, e in enumerate(self.edges):
+      if points[e].min() > 0:
+        cv2.line(self.imgs[img_id], (points[e[0], 0], points[e[0], 1]),
+                      (points[e[1], 0], points[e[1], 1]), self.ec[j], 2,
+                      lineType=cv2.LINE_AA)
 
   def add_points(self, points, img_id='default'):
     num_classes = len(points)
