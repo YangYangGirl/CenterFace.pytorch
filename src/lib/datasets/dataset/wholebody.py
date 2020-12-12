@@ -59,8 +59,15 @@ class WHOLEBODY(data.Dataset):
     if split == 'train':
       self.images = []
       for img_id in image_ids:
+        flag = 0
         idxs = self.coco.getAnnIds(imgIds=[img_id])
         if len(idxs) > 0:
+          for ench_ann_ids in idxs:
+            anns = self.coco.loadAnns(ids=ench_ann_ids)
+            for a in anns:
+              if a['lefthand_valid'] is True:
+                flag = 1
+        if flag == 1:
           self.images.append(img_id)
     else:
       self.images = image_ids

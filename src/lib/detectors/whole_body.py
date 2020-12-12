@@ -110,7 +110,7 @@ class WholeBodyDetector(BaseDetector):
   def show_results(self, debugger, image, results):
     debugger.add_img(image, img_id='multi_pose')
     for bbox in results[1]:
-      if bbox[4] > 0.1:#self.opt.vis_thresh:
+      if bbox[4] > 0.51:#self.opt.vis_thresh:
         # debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
         print("begin "*5, "add coco")
         debugger.add_coco_hp(bbox[5:47], img_id='multi_pose')
@@ -127,7 +127,7 @@ class WholeBodyDetector(BaseDetector):
         #     self.imgs[img_id] = cv2.line(self.imgs[img_id], (points[e[0], 0], points[e[0], 1]),
         #                   (points[e[1], 0], points[e[1], 1]), self.ec[j], 2,
         #                   lineType=cv2.LINE_AA)
-        cv2.imwrite("yxyy-0.03.jpg", debug_image)
+        cv2.imwrite("yxyy-body-1-0.51.jpg", debug_image)
 
     debugger.show_all_imgs(pause=self.pause)
 

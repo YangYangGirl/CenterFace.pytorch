@@ -77,7 +77,7 @@ def test_wider_Face(model_path):
     event_list = wider_face_mat['event_list']
     file_list = wider_face_mat['file_list']
 
-    save_path = '../output/1119_noattsmall_obj600_face_hp_mobilev3_10_800_800_bs12_5e-4_K600_ebest-1/'
+    save_path = '../output/1212_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4_ebest-1/'
     #save_path = '../output/1119_noattsmall_obj314_face_hp_mobilev3_10_800_800_bs12_5e-4_K600_ebest-1/'
 
 
@@ -109,8 +109,11 @@ def test_wider_Face(model_path):
     # opt = opts().init('--task multi_pose --arch shufflenetv2_10 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
     #      save_path, MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
 
-    opt = opts().init('--task multi_pose --arch mobilev3_10 --head_conv 24 --K 600 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
-         save_path, MODEL_PATH, debug, threshold, input_h, input_w).split(' '))
+    # opt = opts().init('--task multi_pose --arch mobilev3_10 --head_conv 24 --K 600 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    #      save_path, MODEL_PATH, debug, threshold, input_h, input_w).split(' '))
+
+    opt = opts().init('--task multi_pose_whole --arch mobilev3_10 --head_conv 24 --K 600 --dataset wholebody --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    save_path, MODEL_PATH, debug, threshold, input_h, input_w).split(' '))
     
     detector = detector_factory[opt.task](opt)
 
@@ -141,13 +144,13 @@ def test_wider_Face(model_path):
             masked_image =  colored_hm * 0.9 + img_np * 0.1
             # import pdb; pdb.set_trace()
             
-            img_name = '../evaluate/heatmap-0.3/' + im_dir 
+            img_name = '../evaluate/heatmap-hand/' + im_dir 
 
             if not os.path.exists(img_name):
                 os.mkdir(img_name)
 
-            cv2.imwrite('../evaluate/heatmap-0.3/' + zip_name, masked_image)
-            cv2.imwrite('../evaluate/heatmap-0.3/' + '%s/pure_%s.jpg' % (im_dir, im_name) , colored_hm)
+            cv2.imwrite('../evaluate/heatmap-hand/' + zip_name, masked_image)
+            cv2.imwrite('../evaluate/heatmap-hand/' + '%s/pure_%s.jpg' % (im_dir, im_name) , colored_hm)
 
             f = open(save_path + im_dir + '/' + im_name + '.txt', 'w')
             f.write('{:s}\n'.format('%s/%s.jpg' % (im_dir, im_name)))
@@ -165,7 +168,7 @@ if __name__ == '__main__':
     # MODEL_PATH = '../exp/multi_pose/1105_pre_face_hp_mobilev2_10_800_800_sig_bs12_5e-5/model_180.pth'
 
     #MODEL_PATH = '../exp/multi_pose/1119_noattsmall_obj314_face_hp_mobilev3_10_800_800_bs12_5e-4/model_best.pth'
-    MODEL_PATH = '../exp/multi_pose/1119_noattsmall_obj600_face_hp_mobilev3_10_800_800_bs12_5e-4/model_best.pth'
+    MODEL_PATH = '../exp/multi_pose_whole/1211_obj600_whole_body_mobilev3_10_800_800_bs36_5e-4/model_60.pth'
 
     # MODEL_PATH = '../exp/multi_pose/1104_nopre_face_hp_mobilev2_10_800_800_sig_bs12_5e-4/model_140.pth'
     # MODEL_PATH = '../exp/ctdet/1002_opt2_face_hp_mobilev2_5/model_160.psth'

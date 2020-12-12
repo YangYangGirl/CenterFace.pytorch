@@ -12,7 +12,7 @@ from utils.image import flip, color_aug
 from utils.image import get_affine_transform, affine_transform
 from utils.image import gaussian_radius, draw_umich_gaussian, draw_msra_gaussian
 from utils.image import draw_dense_reg
-from utils.utils import Data_anchor_sample
+from utils.utils import Data_body_anchor_sample
 from utils.Randaugmentations import Randaugment
 import math
 from PIL import Image
@@ -35,13 +35,12 @@ class WholeBodyDataset(data.Dataset):
     return border // i
 
   def __getitem__(self, index):
+    index = 4
     img_id = self.images[index]
     file_name = self.coco.loadImgs(ids=[img_id])[0]['file_name']
     img_path = os.path.join(self.img_dir, file_name)
     ann_ids = self.coco.getAnnIds(imgIds=[img_id])
     anns = self.coco.loadAnns(ids=ann_ids)
-    for i in range(len(anns)):
-      anns[i]['lefthand_box'] = [anns[i]['lefthand_box'][0], anns[i]['lefthand_box'][1], anns[i]['lefthand_box'][0] + anns[i]['lefthand_box'][2], anns[i]['lefthand_box'][1] + anns[i]['lefthand_box'][3]]
 
     num_objs = len(anns)
     # num_objs = min(len(anns), self.max_objs)
@@ -50,19 +49,19 @@ class WholeBodyDataset(data.Dataset):
         anns = np.random.choice(anns, num_objs)
 
     img = cv2.imread(img_path)
+    img, anns = Data_body_anchor_sample(img, anns)
 
-    # origin_img = img
-    # cv2.imwrite("origin_body.jpg", origin_img)
-    # for i, a in enumerate(anns):
-    #     bbox = self._coco_box_to_bbox(a['lefthand_box'])   # [x, y, w, h]
-    #     pts = np.array(a['lefthand_kpts'], np.float32).reshape(21, 3)
-    #     origin_img = cv2.rectangle(origin_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
-    #     for p in pts:
-    # 	      origin_img = cv2.circle(origin_im
-    #         g, (p[0], p[1]), 1, (0, 0, 255), 0)
-    # cv2.imwrite("debug_body.jpg", origin_img)
+    origin_img = img
+    cv2.imwrite("origin_body_100.jpg", origin_img)
+    for i, a in enumerate(anns):
+        bbox = self._coco_box_to_bbox(a['lefthand_box'])   # [x, y, w, h]
+        pts = np.array(a['lefthand_kpts'], np.float32).reshape(21, 3)
+        origin_img = cv2.rectangle(origin_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+        for p in pts:
+    	      origin_img = cv2.circle(origin_img, (p[0], p[1]), 1, (0, 0, 255), 0)
 
-    img, anns = Data_anchor_sample(img, anns)
+    cv2.imwrite("debug_body_100.jpg", origin_img)
+
     height, width = img.shape[0], img.shape[1]
     c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
     s = max(img.shape[0], img.shape[1]) * 1.0
@@ -89,10 +88,10 @@ class WholeBodyDataset(data.Dataset):
         rf = self.opt.rotate
         rot = np.clip(np.random.randn()*rf, -rf*2, rf*2)
 
-      if np.random.random() < self.opt.flip:
-        flipped = True
-        img = img[:, ::-1, :]
-        c[0] =  width - c[0] - 1
+      # if np.random.random() < self.opt.flip:
+      #   flipped = True
+      #   img = img[:, ::-1, :]
+      #   c[0] =  width - c[0] - 1
 
     trans_input = get_affine_transform(
       c, s, rot, [self.opt.input_res, self.opt.input_res])
@@ -214,15 +213,19 @@ class WholeBodyDataset(data.Dataset):
       kps_mask *= 0
 
     # #  yy add
-    # hm_vis = 255 - hm[0] * 255
-    # hm_vis = np.clip(hm_vis, 0, 255)
-    # hm_vis = np.array(hm_vis, dtype=np.uint8)
-    # hm_vis = np.expand_dims(hm_vis, axis=-1)
-    # hm_vis = np.repeat(hm_vis, 3, axis=-1)
-    # hm_vis = cv2.resize(hm_vis, (width, height)) 
-    # masked_image =  hm_vis * 0.9 + img * 0.1
-    # masked_image = cv2.circle(masked_image, (ct[0], ct[1]), 1, (0, 0, 255), 0)
-    # cv2.imwrite('debug_ct_add_hm.jpg', masked_image)
+    hm_vis = 255 - hm[0] * 255
+    hm_vis = np.clip(hm_vis, 0, 255)
+    hm_vis = np.array(hm_vis, dtype=np.uint8)
+    hm_vis = np.expand_dims(hm_vis, axis=-1)
+    hm_vis = np.repeat(hm_vis, 3, axis=-1)
+    hm_vis = cv2.resize(hm_vis, (width, height)) 
+    masked_image =  hm_vis * 0.9 + img * 0.1
+    for m in gt_det:
+      each_gt_det = m[:4]
+      each_gt_det = np.array(each_gt_det, dtype=np.int32)
+      # print(each_gt_det)
+      # masked_image = cv2.rectangle(masked_image, (int(each_gt_det[0]), int(each_gt_det[1])), (int(each_gt_det[2]), int(each_gt_det[3])), 2, (0, 0, 255), 0)
+    cv2.imwrite('debug_whole_body_hm_100.jpg', masked_image)
 
     ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh,
            'landmarks': kps, 'hps_mask': kps_mask, 'wight_mask': wight_mask, 'ltrb': ltrb, 'ltrb_mask': ltrb_mask}
@@ -243,7 +246,7 @@ class WholeBodyDataset(data.Dataset):
       ret.update({'hp_offset': hp_offset, 'hp_ind': hp_ind, 'hp_mask': hp_mask})
     if self.opt.debug > 0 or not self.split == 'train':
       gt_det = np.array(gt_det, dtype=np.float32) if len(gt_det) > 0 else \
-               np.zeros((1, 40), dtype=np.float32)
+               np.zeros((1, 48), dtype=np.float32)
       meta = {'c': c, 's': s, 'gt_det': gt_det, 'img_id': img_id}
       ret['meta'] = meta
 

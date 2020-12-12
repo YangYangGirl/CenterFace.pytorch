@@ -58,7 +58,7 @@ def test_wider_Face(model_path):
     file_list = wider_face_mat['file_list']
 
     # save_path = '../output/1127_bifpn_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4_ebest-1/'
-    save_path = '../output/1206_pan_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4_ebest-1/' 
+    save_path = '../output/1212_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4_ebest-1/' 
     #save_path = '../output/1119_noattsmall_obj314_face_hp_mobilev3_10_800_800_bs12_5e-4_K600_ebest-1/'
 
 
@@ -146,7 +146,7 @@ if __name__ == '__main__':
 
     #MODEL_PATH = '../exp/multi_pose/1119_noattsmall_obj314_face_hp_mobilev3_10_800_800_bs12_5e-4/model_best.pth'
     
-    MODEL_PATH = '../exp/multi_pose/1206_pan_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4/model_best.pth'
+    MODEL_PATH = '../exp/multi_pose/1212_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4/model_best.pth'
     # MODEL_PATH = '../exp/multi_pose/1127_bifpn_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4/model_best.pth'
 
     # MODEL_PATH = '../exp/multi_pose/1104_nopre_face_hp_mobilev2_10_800_800_sig_bs12_5e-4/model_140.pth'
