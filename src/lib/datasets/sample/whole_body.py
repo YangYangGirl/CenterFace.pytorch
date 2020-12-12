@@ -35,7 +35,6 @@ class WholeBodyDataset(data.Dataset):
     return border // i
 
   def __getitem__(self, index):
-    index = 4
     img_id = self.images[index]
     file_name = self.coco.loadImgs(ids=[img_id])[0]['file_name']
     img_path = os.path.join(self.img_dir, file_name)
@@ -45,22 +44,25 @@ class WholeBodyDataset(data.Dataset):
     num_objs = len(anns)
     # num_objs = min(len(anns), self.max_objs)
     if num_objs > self.max_objs:
+        print("choice")
         num_objs = self.max_objs
         anns = np.random.choice(anns, num_objs)
 
     img = cv2.imread(img_path)
     img, anns = Data_body_anchor_sample(img, anns)
 
-    origin_img = img
-    cv2.imwrite("origin_body_100.jpg", origin_img)
-    for i, a in enumerate(anns):
-        bbox = self._coco_box_to_bbox(a['lefthand_box'])   # [x, y, w, h]
-        pts = np.array(a['lefthand_kpts'], np.float32).reshape(21, 3)
-        origin_img = cv2.rectangle(origin_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
-        for p in pts:
-    	      origin_img = cv2.circle(origin_img, (p[0], p[1]), 1, (0, 0, 255), 0)
+    # origin_img = img.copy()
+    # result_img = img.copy()
+    # cv2.imwrite("origin_body_100.jpg", origin_img)
 
-    cv2.imwrite("debug_body_100.jpg", origin_img)
+    # for i, a in enumerate(anns):
+    #     bbox = self._coco_box_to_bbox(a['lefthand_box'])   # [x1, y1, w, h] => [x1, y1, x2, y2]
+    #     pts = np.asarray(a['lefthand_kpts'], np.float32).reshape(21, 3)
+    #     result_img = cv2.rectangle(result_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+    #     for p in pts:
+    # 	      result_img = cv2.circle(result_img, (p[0], p[1]), 1, (0, 0, 255), 0)
+
+    # cv2.imwrite("origin_body_100_out.jpg", result_img)
 
     height, width = img.shape[0], img.shape[1]
     c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
@@ -88,10 +90,10 @@ class WholeBodyDataset(data.Dataset):
         rf = self.opt.rotate
         rot = np.clip(np.random.randn()*rf, -rf*2, rf*2)
 
-      # if np.random.random() < self.opt.flip:
-      #   flipped = True
-      #   img = img[:, ::-1, :]
-      #   c[0] =  width - c[0] - 1
+      if np.random.random() < self.opt.flip:
+        flipped = True
+        img = img[:, ::-1, :]
+        c[0] =  width - c[0] - 1
 
     trans_input = get_affine_transform(
       c, s, rot, [self.opt.input_res, self.opt.input_res])

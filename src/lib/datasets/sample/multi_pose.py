@@ -41,6 +41,7 @@ class MultiPoseDataset(data.Dataset):
     ann_ids = self.coco.getAnnIds(imgIds=[img_id])
     anns = self.coco.loadAnns(ids=ann_ids)
     num_objs = len(anns)
+    
     # num_objs = min(len(anns), self.max_objs)
     if num_objs > self.max_objs:
         num_objs = self.max_objs
@@ -49,16 +50,15 @@ class MultiPoseDataset(data.Dataset):
     img = cv2.imread(img_path)
     img, anns = Data_anchor_sample(img, anns)
 
-    origin_img = img
-    print("origin_img", origin_img.shape)
-    cv2.imwrite("origin.jpg", origin_img)
-    for i, a in enumerate(anns):
-        bbox = self._coco_box_to_bbox(a['bbox'])   # [x, y, w, h]
-        pts = np.array(a['keypoints'], np.float32).reshape(5, 3)
-        origin_img = cv2.rectangle(origin_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
-        for p in pts:
-    	      origin_img = cv2.circle(origin_img, (p[0], p[1]), 1, (0, 0, 255), 0)
-    cv2.imwrite("12-12-debug_face_yxyy.jpg", origin_img)
+    # origin_img = img
+    # cv2.imwrite("origin.jpg", origin_img)
+    # for i, a in enumerate(anns):
+    #     bbox = self._coco_box_to_bbox(a['bbox'])   # [x, y, w, h]
+    #     pts = np.array(a['keypoints'], np.float32).reshape(5, 3)
+    #     origin_img = cv2.rectangle(origin_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+    #     for p in pts:
+    # 	      origin_img = cv2.circle(origin_img, (p[0], p[1]), 1, (0, 0, 255), 0)
+    # cv2.imwrite("12-12-debug_face_yxyy.jpg", origin_img)
 
     # # for test the keypoint order
     # img1 = cv2.flip(img,1)
@@ -100,7 +100,6 @@ class MultiPoseDataset(data.Dataset):
     #   add_coco_bbox(img1, bbox )
     #   add_coco_hp(img1, pts)
     #   cv2.imwrite("debug_face.jpg", img1)#, origin_img)
-
 
 
     height, width = img.shape[0], img.shape[1]

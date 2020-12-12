@@ -34,7 +34,6 @@ def Data_body_anchor_sample(image, anns):
     for ann in anns:
         boxes.append([ann['lefthand_box'][0], ann['lefthand_box'][1], ann['lefthand_box'][0]+ann['lefthand_box'][2], ann['lefthand_box'][1]+ann['lefthand_box'][3]])
     boxes = np.asarray(boxes, dtype=np.float32)
-
     height, width, _ = image.shape
 
     random_counter = 0
@@ -43,16 +42,18 @@ def Data_body_anchor_sample(image, anns):
     rand_idx = random.randint(0, len(boxArea)-1)
     rand_Side = boxArea[rand_idx] ** 0.5
 
-    anchors = [16, 32, 48, 64, 96, 128, 256, 512]
+    # anchors = [16, 32, 48, 64, 96, 128, 256, 512]
+    anchors = [1, 2, 5, 13, 16, 20, 30, 42, 55, 62, 90, 105, 150] #2, 4, 16, 20, 24, 28, 32, 48, 64, 80, 96, 128] 
     distance = infDistance
-    anchor_idx = 21
+    anchor_idx = 5
     for i, anchor in enumerate(anchors):
         if abs(anchor - rand_Side) < distance:
             distance = abs(anchor - rand_Side)  # 选择最接近的anchors
             anchor_idx = i
 
-    target_anchor = random.choice(anchors[0:min(anchor_idx+1, 21) ])  # 随机选择一个相对较小的anchor，向下
+    target_anchor = random.choice(anchors[0:min(anchor_idx+1, 6) ])  # 随机选择一个相对较小的anchor，向下
     ratio = float(target_anchor) / rand_Side  # 缩放的尺度
+
     ratio = ratio * (2 ** random.uniform(-1, 1))  # [ratio/2, 2ratio]的均匀分布
 
     if int(height * ratio * width * ratio) > maxSize * maxSize:
@@ -60,6 +61,9 @@ def Data_body_anchor_sample(image, anns):
 
     interp_methods = [cv2.INTER_LINEAR, cv2.INTER_CUBIC, cv2.INTER_AREA, cv2.INTER_NEAREST, cv2.INTER_LANCZOS4]
     interp_method = random.choice(interp_methods)
+
+
+    ratio = np.random.choice(np.arange(0.5, 2, 0.1))
     image = cv2.resize(image, None, None, fx=ratio, fy=ratio, interpolation=interp_method)
 
     boxes[:, 0] *= ratio
@@ -69,7 +73,7 @@ def Data_body_anchor_sample(image, anns):
 
     boxes = boxes.tolist()
     for i in range(len(anns)):
-        anns[i]['lefthand_box'] = [boxes[i][0], boxes[i][1], boxes[i][2]-boxes[i][0], boxes[i][3]-boxes[i][1]]      # 人脸bbox
+        anns[i]['lefthand_box'] = [boxes[i][0], boxes[i][1], boxes[i][2]-boxes[i][0], boxes[i][3]-boxes[i][1]]      # 左手bbox
         for j in range(21):
             anns[i]['lefthand_kpts'][j*3] *= ratio
             anns[i]['lefthand_kpts'][j*3+1] *= ratio
@@ -91,10 +95,12 @@ def Data_anchor_sample(image, anns):
     random_counter = 0
 
     boxArea = (boxes[:, 2] - boxes[:, 0] + 1) * (boxes[:, 3] - boxes[:, 1] + 1)
+
     rand_idx = random.randint(0, len(boxArea)-1)
     rand_Side = boxArea[rand_idx] ** 0.5
 
     anchors = [16, 32, 48, 64, 96, 128, 256, 512]
+    
     distance = infDistance
     anchor_idx = 5
     for i, anchor in enumerate(anchors):
