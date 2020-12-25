@@ -10,7 +10,7 @@ import torch
 
 from external.nms import soft_nms_39
 from models.decode import multi_pose_decode, centerface_decode
-from models.utils import flip_tensor, flip_lr_off, flip_lr
+from models.utils import flip_tensor, flip_lr_off, flip_lr, flip_lr_off_body
 from utils.image import get_affine_transform
 from utils.post_process import whole_body_post_process
 from utils.debugger import Debugger
@@ -34,37 +34,29 @@ class WholeBodyDetector(BaseDetector):
       #   output['hm_hp'] = output['hm_hp'].sigmoid_()
 
       reg = output['hm_offset'] if self.opt.reg_offset else None
-      # hm_hp = output['hm_hp'] if self.opt.hm_hp else None
-      # hp_offset = output['hp_offset'] if self.opt.reg_hp_offset else None
+      hm_hp = output['hm_hp'] if self.opt.hm_hp else None
+      hp_offset = output['hp_offset'] if self.opt.reg_hp_offset else None
       torch.cuda.synchronize()
       forward_time = time.time()
       
       if self.opt.flip_test:
         output['hm'] = (output['hm'][0:1] + flip_tensor(output['hm'][1:2])) / 2
-        if opt.ltrb:
+        if self.opt.ltrb:
           #  output['ltrb'] = (output['wh'][0:1] + flip_tensor(output['wh'][1:2])) / 2
           print("to do!")
         else:
           output['wh'] = (output['wh'][0:1] + flip_tensor(output['wh'][1:2])) / 2
         output['hps'] = (output['hps'][0:1] + 
-          flip_lr_off(output['hps'][1:2], self.flip_idx)) / 2
+          flip_lr_off_body(output['hps'][1:2], self.flip_idx)) / 2
         hm_hp = (hm_hp[0:1] + flip_lr(hm_hp[1:2], self.flip_idx)) / 2 \
                 if hm_hp is not None else None
         reg = reg[0:1] if reg is not None else None
         hp_offset = hp_offset[0:1] if hp_offset is not None else None
       
-      if self.opt.ltrb:
-        dets = centerface_decode(
-          output['hm'], ltrb=output['ltrb'], kps=output['landmarks'],
-          reg=reg, K=self.opt.K)
-      else:
-        dets = centerface_decode(
-          output['hm'], wh=output['wh'], kps=output['landmarks'],
-          reg=reg, K=self.opt.K)
+      dets = multi_pose_decode(
+        output['hm'], wh=output['wh'], kps=output['hps'],
+        reg=reg, hm_hp=hm_hp, hp_offset=hp_offset, K=self.opt.K)
 
-      # dets = centerface_decode(
-      #   output['hm'], wh=output['wh'], ltrb=output['ltrb'], kps=output['landmarks'],
-      #   reg=reg, K=self.opt.K)
 
     if return_time:
       return output, dets, forward_time
@@ -110,10 +102,9 @@ class WholeBodyDetector(BaseDetector):
   def show_results(self, debugger, image, results):
     debugger.add_img(image, img_id='multi_pose')
     for bbox in results[1]:
-      if bbox[4] > 0.51:#self.opt.vis_thresh:
+      if bbox[4] > 0.2:#self.opt.vis_thresh:
         # debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
-        print("begin "*5, "add coco")
-        debugger.add_coco_hp(bbox[5:47], img_id='multi_pose')
+        debugger.add_whole_body_points(bbox[5:47], img_id='multi_pose')
 
         debug_image = image
         points = bbox[5:47]
@@ -135,6 +126,6 @@ class WholeBodyDetector(BaseDetector):
     debugger.add_img(image, img_id='multi_pose')
     for bbox in results[1]:
       if bbox[4] > 0.2:#self.opt.vis_thresh:
-        # debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
-        debugger.add_coco_hp(bbox[5:47], img_id='multi_pose')
+        debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
+        debugger.add_whole_body_points(bbox[5:47], img_id='multi_pose')
     return debugger.return_img(img_id='multi_pose')

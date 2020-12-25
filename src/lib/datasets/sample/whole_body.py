@@ -43,26 +43,59 @@ class WholeBodyDataset(data.Dataset):
 
     num_objs = len(anns)
     # num_objs = min(len(anns), self.max_objs)
-    if num_objs > self.max_objs:
-        print("choice")
-        num_objs = self.max_objs
-        anns = np.random.choice(anns, num_objs)
+    # if num_objs > self.max_objs:
+    #     num_objs = self.max_objs
+    #     anns = np.random.choice(anns, num_objs)
 
     img = cv2.imread(img_path)
+
+    for i, a in enumerate(anns):
+      if a['lefthand_valid'] is True:
+        pts = np.asarray(a['lefthand_kpts'], np.float32).reshape(21, 3)
+        bbox = self._coco_box_to_bbox(a['lefthand_box'])   # [x1, y1, w, h] => [x1, y1, x2, y2]
+        x1_, y1_, x2_, y2_ = bbox
+        h_, w_, c_ = img.shape
+        # print("x1_, y1_, x2_, y2_", x1_, y1_, x2_, y2_)
+        x1, y1, x2, y2 = int(x1_), int(y1_), math.ceil(x2_), math.ceil(y2_)
+        cropped = img[y1: y2, x1: x2]
+        # print("img", img.shape)
+        # print("img_path", img_path)
+        # print("x1, y1, x2, y2", x1, y1, x2, y2)
+        # print("cropped", cropped.shape)
+        if x1 < w_ and x2 < w_ and y1 < h_ and y2 < h_ and cropped.size !=  0:
+          cv2.imwrite('../data/wider_face/crop_lefthand/imgs/{}_{}.jpg'.format(img_id, i), cropped)
+          f = open('../data/wider_face/crop_lefthand/labels/{}_{}.json'.format(img_id, i),'w')
+          f_txt = open('../data/wider_face/crop_lefthand/val.txt', 'a+')
+          f_txt.write('{}_{}\n'.format(img_id, i))
+          result_pts = {}
+          pts[:, 0] -= x1
+          pts[:, 1] -= y1
+          result_pts['lefthand_keypoints'] = pts.tolist()
+          json.dump(result_pts, f)
+        else:
+          print("pass")
+
     img, anns = Data_body_anchor_sample(img, anns)
 
-    # origin_img = img.copy()
-    # result_img = img.copy()
-    # cv2.imwrite("origin_body_100.jpg", origin_img)
+    origin_img = img.copy()
+    result_img = img.copy()
+    cv2.imwrite("origin_body_100.jpg", origin_img)
 
-    # for i, a in enumerate(anns):
-    #     bbox = self._coco_box_to_bbox(a['lefthand_box'])   # [x1, y1, w, h] => [x1, y1, x2, y2]
-    #     pts = np.asarray(a['lefthand_kpts'], np.float32).reshape(21, 3)
-    #     result_img = cv2.rectangle(result_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
-    #     for p in pts:
-    # 	      result_img = cv2.circle(result_img, (p[0], p[1]), 1, (0, 0, 255), 0)
+    for i, a in enumerate(anns):
+      if a['lefthand_valid'] is True:
+        bbox = self._coco_box_to_bbox(a['lefthand_box'])   # [x1, y1, w, h] => [x1, y1, x2, y2]
+        pts = np.asarray(a['lefthand_kpts'], np.float32).reshape(21, 3)
+        result_img = cv2.rectangle(result_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+        for p in pts:
+            result_img = cv2.circle(result_img, (p[0], p[1]), 1, (0, 0, 255), 0)
+      if a['righthand_valid'] is True:
+        bbox = self._coco_box_to_bbox(a['righthand_box'])   # [x1, y1, w, h] => [x1, y1, x2, y2]
+        pts = np.asarray(a['righthand_kpts'], np.float32).reshape(21, 3)
+        result_img = cv2.rectangle(result_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+        for p in pts:
+            result_img = cv2.circle(result_img, (p[0], p[1]), 1, (0, 0, 255), 0)
 
-    # cv2.imwrite("origin_body_100_out.jpg", result_img)
+    cv2.imwrite("origin_body_100_out.jpg", result_img)
 
     height, width = img.shape[0], img.shape[1]
     c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
@@ -97,14 +130,14 @@ class WholeBodyDataset(data.Dataset):
 
     trans_input = get_affine_transform(
       c, s, rot, [self.opt.input_res, self.opt.input_res])
+
     inp = cv2.warpAffine(img, trans_input, 
                          (self.opt.input_res, self.opt.input_res),
                          flags=cv2.INTER_LINEAR)
-
     inp = (inp.astype(np.float32) / 255.)
+
     if self.split == 'train' and not self.opt.no_color_aug:                 # 随机进行图片增强
       color_aug(self._data_rng, inp, self._eig_val, self._eig_vec)
-      # inp = Randaugment(self._data_rng, inp, self._eig_val, self._eig_vec)
 
     inp = (inp - self.mean) / self.std
     inp = inp.transpose(2, 0, 1)
@@ -139,76 +172,85 @@ class WholeBodyDataset(data.Dataset):
     gt_det = []
     for k in range(num_objs):
       ann = anns[k]
-      bbox = self._coco_box_to_bbox(ann['lefthand_box'])   # [x, y, w, h]
-      cls_id = int(ann['category_id']) - 1
-      pts = np.array(ann['lefthand_kpts'], np.float32).reshape(num_joints, 3)
-      if flipped:
-        bbox[[0, 2]] = width - bbox[[2, 0]] - 1
-        pts[:, 0] = width - pts[:, 0] - 1
-        for e in self.flip_idx:
-          pts[e[0]], pts[e[1]] = pts[e[1]].copy(), pts[e[0]].copy()
+      if ann['lefthand_valid'] is False and ann['righthand_valid'] is False:
+        continue
+      
+      for body_key in ['lefthand', 'righthand']:
+        if ann[body_key + '_valid'] is True:
+          bbox = self._coco_box_to_bbox(ann[body_key + '_box'])   # [x, y, w, h]
+          cls_id = int(ann['category_id']) - 1
+          pts = np.array(ann[body_key + '_kpts'], np.float32).reshape(num_joints, 3)
+        else:
+          continue
 
-      bbox[:2] = affine_transform(bbox[:2], trans_output)
-      bbox[2:] = affine_transform(bbox[2:], trans_output)
-      bbox = np.clip(bbox, 0, output_res - 1)
-      h, w = bbox[3] - bbox[1], bbox[2] - bbox[0]
-      if (h > 0 and w > 0) or (rot != 0):
-        radius = gaussian_radius((math.ceil(h), math.ceil(w)))
-        radius = self.opt.hm_gauss if self.opt.mse_loss else max(0, int(radius)) 
-        ct = np.array(
-          [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)       # 人脸的中心坐标
+        if flipped:
+          bbox[[0, 2]] = width - bbox[[2, 0]] - 1
+          pts[:, 0] = width - pts[:, 0] - 1
+          for e in self.flip_idx:
+            pts[e[0]], pts[e[1]] = pts[e[1]].copy(), pts[e[0]].copy()
 
-        ct_int = ct.astype(np.int32)                        # 整数化
-        # wh[k] = 1. * w, 1. * h                                                    # 2. centernet的方式
-        wh[k] = np.log(1. * w / 4), np.log(1. * h / 4)                              # 2. 人脸bbox的高度和宽度,centerface论文的方式
+        bbox[:2] = affine_transform(bbox[:2], trans_output)
+        bbox[2:] = affine_transform(bbox[2:], trans_output)
+        bbox = np.clip(bbox, 0, output_res - 1)
+        h, w = bbox[3] - bbox[1], bbox[2] - bbox[0]
+        if (h > 0 and w > 0) or (rot != 0):
+          radius = gaussian_radius((math.ceil(h), math.ceil(w)))
+          radius = self.opt.hm_gauss if self.opt.mse_loss else max(0, int(radius)) 
+          ct = np.array(
+            [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)       # 人脸的中心坐标
 
-        if self.opt.ltrb: # and pts[2][2] > 0:
-          l, t, r, b = ct[0] - bbox[0], ct[1] - bbox[1], bbox[2] - ct[0], bbox[3] - ct[1]
-          # l, t, r, b = ct_int[0] - bbox[0], ct_int[1] - bbox[1], bbox[2] - ct_int[0], bbox[3] - ct_int[1]
-          ltrb[k] = np.log(1. * l / 2), np.log(1. * t / 2), np.log(1. * r / 2), np.log(1. * b / 2)   
+          ct_int = ct.astype(np.int32)                        # 整数化
+          # wh[k] = 1. * w, 1. * h                                                    # 2. centernet的方式
+          wh[k] = np.log(1. * w), np.log(1. * h)                              # 2. 人脸bbox的高度和宽度,centerface论文的方式
 
-          ltrb_mask[k] = 1
+          if self.opt.ltrb: # and pts[2][2] > 0:
+            l, t, r, b = ct[0] - bbox[0], ct[1] - bbox[1], bbox[2] - ct[0], bbox[3] - ct[1]
+            # l, t, r, b = ct_int[0] - bbox[0], ct_int[1] - bbox[1], bbox[2] - ct_int[0], bbox[3] - ct_int[1]
+            ltrb[k] = np.log(1. * l / 2), np.log(1. * t / 2), np.log(1. * r / 2), np.log(1. * b / 2)   
 
-        ind[k] = ct_int[1] * output_res + ct_int[0]         # 人脸bbox在1/4特征图中的索引
-        reg[k] = ct - ct_int                                # 3. 人脸bbox中心点整数化的偏差
-        reg_mask[k] = 1                                     # 是否需要用于计算误差
-        
-        # if w*h <= 20:
-        #     wight_mask[k] = 15
+            ltrb_mask[k] = 1
 
-        num_kpts = pts[:, 2].sum()                           # 没有关键点标注的时哦
-        if num_kpts == 0:                                    # 没有关键点标注的都是比较困难的样本
-          # print('没有关键点标注')
-          hm[cls_id, ct_int[1], ct_int[0]] = 0.9999
-          # reg_mask[k] = 0
+          ind[k] = ct_int[1] * output_res + ct_int[0]         # 人脸bbox在1/4特征图中的索引
+          reg[k] = ct - ct_int                                # 3. 人脸bbox中心点整数化的偏差
+          reg_mask[k] = 1                                     # 是否需要用于计算误差
+          
+          # if w*h <= 20:
+          #     wight_mask[k] = 15
 
-        hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)))
-        hp_radius = self.opt.hm_gauss \
-                    if self.opt.mse_loss else max(0, int(hp_radius)) 
-        for j in range(num_joints):
-          if pts[j, 2] > 0:
-            pts[j, :2] = affine_transform(pts[j, :2], trans_output_rot)
-            if pts[j, 0] >= 0 and pts[j, 0] < output_res and \
-               pts[j, 1] >= 0 and pts[j, 1] < output_res:
-              kps[k, j * 2: j * 2 + 2] = pts[j, :2] - ct_int                # 4. 关键点相对于人脸bbox的中心的偏差
-              kps_mask[k, j * 2: j * 2 + 2] = 1
-              pt_int = pts[j, :2].astype(np.int32)                          # 关键点整数化
-              hp_offset[k * num_joints + j] = pts[j, :2] - pt_int           # 关键点整数化的偏差
-              hp_ind[k * num_joints + j] = pt_int[1] * output_res + pt_int[0]   # 索引
-              hp_mask[k * num_joints + j] = 1                                   # 计算损失的mask
-              if self.opt.dense_hp:
-                # must be before draw center hm gaussian
-                draw_dense_reg(dense_kps[j], hm[cls_id], ct_int, 
-                               pts[j, :2] - ct_int, radius, is_offset=True)
-                draw_gaussian(dense_kps_mask[j], ct_int, radius)
-              draw_gaussian(hm_hp[j], pt_int, hp_radius)                    # 1. 关键点高斯map
-              # if ann['bbox'][2]*ann['bbox'][3] >= 16.0:                   # 太小的人脸忽略
-              #   kps_mask[k, j * 2: j * 2 + 2] = 0
-                # print("==== file_name, index ====", file_name, index)
-        draw_gaussian(hm[cls_id], ct_int, radius)
-        gt_det.append([ct[0] - w / 2, ct[1] - h / 2, 
-                       ct[0] + w / 2, ct[1] + h / 2, 1] + 
-                       pts[:, :2].reshape(num_joints * 2).tolist() + [cls_id])
+          num_kpts = pts[:, 2].sum()                           # 没有关键点标注的时哦
+          if num_kpts == 0:                                    # 没有关键点标注的都是比较困难的样本
+            # print('没有关键点标注')
+            hm[cls_id, ct_int[1], ct_int[0]] = 0.9999
+            # reg_mask[k] = 0
+
+          hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)))
+          hp_radius = self.opt.hm_gauss \
+                      if self.opt.mse_loss else max(0, int(hp_radius)) 
+          for j in range(num_joints):
+            if pts[j, 2] > 0:
+              pts[j, :2] = affine_transform(pts[j, :2], trans_output_rot)
+              if pts[j, 0] >= 0 and pts[j, 0] < output_res and \
+                pts[j, 1] >= 0 and pts[j, 1] < output_res:
+                kps[k, j * 2: j * 2 + 2] = pts[j, :2] - ct_int                # 4. 关键点相对于人脸bbox的中心的偏差
+                kps_mask[k, j * 2: j * 2 + 2] = 1
+                pt_int = pts[j, :2].astype(np.int32)                          # 关键点整数化
+                hp_offset[k * num_joints + j] = pts[j, :2] - pt_int           # 关键点整数化的偏差
+                hp_ind[k * num_joints + j] = pt_int[1] * output_res + pt_int[0]   # 索引
+                hp_mask[k * num_joints + j] = 1                                   # 计算损失的mask
+                if self.opt.dense_hp:
+                  # must be before draw center hm gaussian
+                  draw_dense_reg(dense_kps[j], hm[cls_id], ct_int, 
+                                pts[j, :2] - ct_int, radius, is_offset=True)
+                  draw_gaussian(dense_kps_mask[j], ct_int, radius)
+                draw_gaussian(hm_hp[j], pt_int, hp_radius)                    # 1. 关键点高斯map
+                # if ann['bbox'][2]*ann['bbox'][3] >= 16.0:                   # 太小的人脸忽略
+                #   kps_mask[k, j * 2: j * 2 + 2] = 0
+                  # print("==== file_name, index ====", file_name, index)
+          draw_gaussian(hm[cls_id], ct_int, radius)
+          gt_det.append([ct[0] - w / 2, ct[1] - h / 2, 
+                        ct[0] + w / 2, ct[1] + h / 2, 1] + 
+                        pts[:, :2].reshape(num_joints * 2).tolist() + [cls_id])
+
     if rot != 0:
       hm = hm * 0 + 0.9999
       reg_mask *= 0
@@ -225,8 +267,6 @@ class WholeBodyDataset(data.Dataset):
     for m in gt_det:
       each_gt_det = m[:4]
       each_gt_det = np.array(each_gt_det, dtype=np.int32)
-      # print(each_gt_det)
-      # masked_image = cv2.rectangle(masked_image, (int(each_gt_det[0]), int(each_gt_det[1])), (int(each_gt_det[2]), int(each_gt_det[3])), 2, (0, 0, 255), 0)
     cv2.imwrite('debug_whole_body_hm_100.jpg', masked_image)
 
     ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh,

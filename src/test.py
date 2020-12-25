@@ -13,7 +13,7 @@ from progress.bar import Bar
 import torch
 
 from external.nms import soft_nms
-from opts import opts
+from opts_pose import opts
 from logger import Logger
 from utils.utils import AverageMeter
 from datasets.dataset_factory import dataset_factory
@@ -67,6 +67,8 @@ def prefetch_test(opt):
   time_stats = ['tot', 'load', 'pre', 'net', 'dec', 'post', 'merge']
   avg_time_stats = {t: AverageMeter() for t in time_stats}
   for ind, (img_id, pre_processed_images) in enumerate(data_loader):
+    # if ind >= 10:
+    #   break
     ret = detector.run(pre_processed_images)
     results[img_id.numpy().astype(np.int32)[0]] = ret['results']
     Bar.suffix = '[{0}/{1}]|Tot: {total:} |ETA: {eta:} '.format(
@@ -77,7 +79,8 @@ def prefetch_test(opt):
         t, tm = avg_time_stats[t])
     bar.next()
   bar.finish()
-  dataset.run_eval(results, opt.save_dir)
+
+  dataset.run_eval(opt.save_dir, results=results)
 
 def test(opt):
   os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
@@ -117,6 +120,7 @@ def test(opt):
     bar.next()
   bar.finish()
   dataset.run_eval(results, opt.save_dir)
+
 
 if __name__ == '__main__':
   opt = opts().parse()

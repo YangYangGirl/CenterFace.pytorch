@@ -42,8 +42,6 @@ class GIoULoss(nn.Module):
           shift_y, shift_x = torch.meshgrid(y, x)
           self.shift = torch.stack((shift_x, shift_y), dim=0).float()   # 2, h, w
 
-      # import pdb; pdb.set_trace()
-
       pred_boxes = torch.cat((
           self.shift - pred[:, [0, 1]],
           self.shift + pred[:, [2, 3]]

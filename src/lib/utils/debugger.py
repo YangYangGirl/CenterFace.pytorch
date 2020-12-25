@@ -106,7 +106,8 @@ class Debugger(object):
         (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
         (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
         (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
-        (255, 0, 0), (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255)]
+        (255, 0, 0), (0, 0, 255), (255, 0, 255), (255, 0, 0), (0, 0, 255), 
+        (255, 0, 0)]
 
     num_classes = len(self.names)
     self.down_ratio=down_ratio
@@ -222,15 +223,15 @@ class Debugger(object):
     c = self.colors[cat][0][0].tolist()
     if self.theme == 'white':
       c = (255 - np.array(c)).tolist()
-    txt = '{}{:.1f}'.format(self.names[cat], conf)
+    txt = '{}{:.2f}'.format(self.names[cat], conf)
     font = cv2.FONT_HERSHEY_SIMPLEX
     cat_size = cv2.getTextSize(txt, font, 0.5, 2)[0]
     cv2.rectangle(
       self.imgs[img_id], (bbox[0], bbox[1]), (bbox[2], bbox[3]), c, 2)
     if show_txt:
-      cv2.rectangle(self.imgs[img_id],
-                    (bbox[0], bbox[1] - cat_size[1] - 2),
-                    (bbox[0] + cat_size[0], bbox[1] - 2), c, -1)
+    #   cv2.rectangle(self.imgs[img_id],
+    #                 (bbox[0], bbox[1] - cat_size[1] - 2),
+    #                 (bbox[0] + cat_size[0], bbox[1] - 2), c, -1)
       cv2.putText(self.imgs[img_id], txt, (bbox[0], bbox[1] - 2), 
                   font, 0.5, (0, 0, 0), thickness=1, lineType=cv2.LINE_AA)
 
@@ -245,6 +246,17 @@ class Debugger(object):
         cv2.line(self.imgs[img_id], (points[e[0], 0], points[e[0], 1]),
                       (points[e[1], 0], points[e[1], 1]), self.ec[j], 2,
                       lineType=cv2.LINE_AA)
+
+  def add_whole_body_points(self, points, img_id='default'):
+    points = np.array(points, dtype=np.int32).reshape(self.num_joints, 2)
+    for j in range(self.num_joints):
+      cv2.circle(self.imgs[img_id],
+                 (points[j, 0], points[j, 1]), 3, self.colors_hp[j], -1)
+    # # for person pose edege show
+    # for j, e in enumerate(self.edges):
+    #   if points[e].min() > 0:
+    #     cv2.circle(self.imgs[img_id], (points[e[0], 0], points[e[0], 1]),
+    #                   (points[e[1], 0], points[e[1], 1]), self.ec[j], 2)
 
   def add_points(self, points, img_id='default'):
     num_classes = len(points)

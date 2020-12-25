@@ -14,4 +14,5 @@ train_factory = {
   'ctdet': CtdetTrainer,
   'multi_pose': MultiPoseTrainer, 
   'multi_pose_whole': WholeBodyTrainer, 
+  'multi_pose_crop': WholeBodyTrainer, 
 }

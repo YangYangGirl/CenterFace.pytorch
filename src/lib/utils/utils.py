@@ -32,7 +32,10 @@ def Data_body_anchor_sample(image, anns):
 
     boxes = []
     for ann in anns:
-        boxes.append([ann['lefthand_box'][0], ann['lefthand_box'][1], ann['lefthand_box'][0]+ann['lefthand_box'][2], ann['lefthand_box'][1]+ann['lefthand_box'][3]])
+        if ann['lefthand_valid'] is True:
+            boxes.append([ann['lefthand_box'][0], ann['lefthand_box'][1], ann['lefthand_box'][0]+ann['lefthand_box'][2], ann['lefthand_box'][1]+ann['lefthand_box'][3]])
+        if ann['righthand_valid'] is True:
+            boxes.append([ann['righthand_box'][0], ann['righthand_box'][1], ann['righthand_box'][0]+ann['righthand_box'][2], ann['righthand_box'][1]+ann['righthand_box'][3]])
     boxes = np.asarray(boxes, dtype=np.float32)
     height, width, _ = image.shape
 
@@ -62,8 +65,7 @@ def Data_body_anchor_sample(image, anns):
     interp_methods = [cv2.INTER_LINEAR, cv2.INTER_CUBIC, cv2.INTER_AREA, cv2.INTER_NEAREST, cv2.INTER_LANCZOS4]
     interp_method = random.choice(interp_methods)
 
-
-    ratio = np.random.choice(np.arange(0.5, 2, 0.1))
+    ratio = np.random.choice(np.arange(0.9, 2, 0.1))
     image = cv2.resize(image, None, None, fx=ratio, fy=ratio, interpolation=interp_method)
 
     boxes[:, 0] *= ratio
@@ -72,11 +74,20 @@ def Data_body_anchor_sample(image, anns):
     boxes[:, 3] *= ratio
 
     boxes = boxes.tolist()
+    which_bbox = 0
     for i in range(len(anns)):
-        anns[i]['lefthand_box'] = [boxes[i][0], boxes[i][1], boxes[i][2]-boxes[i][0], boxes[i][3]-boxes[i][1]]      # 左手bbox
-        for j in range(21):
-            anns[i]['lefthand_kpts'][j*3] *= ratio
-            anns[i]['lefthand_kpts'][j*3+1] *= ratio
+        if anns[i]['lefthand_valid'] is True:
+            anns[i]['lefthand_box'] = [boxes[which_bbox][0], boxes[which_bbox][1], boxes[which_bbox][2]-boxes[which_bbox][0], boxes[which_bbox][3]-boxes[which_bbox][1]]      # 左手bbox
+            for j in range(21):
+                anns[i]['lefthand_kpts'][j*3] *= ratio
+                anns[i]['lefthand_kpts'][j*3+1] *= ratio
+            which_bbox += 1
+        if anns[i]['righthand_valid'] is True:
+            anns[i]['righthand_box'] = [boxes[which_bbox][0], boxes[which_bbox][1], boxes[which_bbox][2]-boxes[which_bbox][0], boxes[which_bbox][3]-boxes[which_bbox][1]]      # 右手bbox
+            for j in range(21):
+                anns[i]['righthand_kpts'][j*3] *= ratio
+                anns[i]['righthand_kpts'][j*3+1] *= ratio
+            which_bbox += 1
 
     return image, anns
 

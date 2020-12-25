@@ -7,10 +7,11 @@ from pycocotools.cocoeval import COCOeval
 import numpy as np
 import json
 import os
-
+import cv2
+import math
 import torch.utils.data as data
 
-class WHOLEBODY(data.Dataset):
+class CROPBODY(data.Dataset):
   num_classes = 1
   num_joints = 21
   
@@ -20,9 +21,8 @@ class WHOLEBODY(data.Dataset):
   std  = np.array([0.28863828, 0.27408164, 0.27809835],
                    dtype=np.float32).reshape(1, 1, 3)
   flip_idx = []
-  #flip_idx = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16]]
   def __init__(self, opt, split):
-    super(WHOLEBODY, self).__init__()
+    super(CROPBODY, self).__init__()
     self.anns_id = -1
     self.edges = [[0, 1], [0, 2], [1, 3], [2, 4], 
                   [4, 6], [3, 5], [5, 6], 
@@ -54,82 +54,26 @@ class WHOLEBODY(data.Dataset):
     self.opt = opt
 
     print('==> initializing coco wholebody {} data.'.format(split))
-    print('==> load annotations from', self.annot_path)
-    self.coco = coco.COCO(self.annot_path)
-    
-    image_ids = self.coco.getImgIds()
-
     if split == 'train':
-      self.images = []
-      for img_id in image_ids:
-        flag = 0
-        idxs = self.coco.getAnnIds(imgIds=[img_id])
-        if len(idxs) > 0:
-          for ench_ann_ids in idxs:
-            anns = self.coco.loadAnns(ids=ench_ann_ids)
-            for a in anns:
-              if a['lefthand_valid'] is True or a['righthand_valid'] is True:
-                flag = 1
-        if flag == 1:
-          self.images.append(img_id)
+      f = open('../data/wider_face/crop_lefthand/train.txt', 'r')
+      print("successfilly load train.txt")
+      self.images = f.readlines()
     else:
-      self.images = []
-      for img_id in image_ids:
-        flag = 0
-        idxs = self.coco.getAnnIds(imgIds=[img_id])
-        if len(idxs) > 0:
-          for ench_ann_ids in idxs:
-            anns = self.coco.loadAnns(ids=ench_ann_ids)
-            for a in anns:
-              if a['lefthand_valid'] is True or a['righthand_valid'] is True:
-                flag = 1
-        if flag == 1:
-          self.images.append(img_id)
+      f = open('../data/wider_face/crop_lefthand/val.txt', 'r')
+      print("successfilly load val.txt")
+      self.images = f.readlines()
     self.num_samples = len(self.images)
     print('Loaded {} {} samples'.format(split, self.num_samples))
+
+  def _coco_box_to_bbox(self, box):
+    bbox = np.array([box[0], box[1], box[0] + box[2], box[1] + box[3]],
+                    dtype=np.float32)
+    return bbox
 
   def _to_float(self, x):
     return float("{:.2f}".format(x))
 
   def convert_eval_format(self, all_bboxes):
-    # results_json = {}
-    # results_json["info"] = {
-    #     "description": "COCO-WholeBody",
-    #     "url": "https://github.com/jin-s13/COCO-WholeBody",
-    #     "version": "1.0",
-    #     "year": "2020",
-    #     "date_created": "2020/07/01"
-    # }
-
-    # results_json["licenses"] = {}
-    # results_json["categories"] = [
-    #   {
-    #     "supercategory": "person",
-    #     "id": 1,
-    #     "name": "person",
-    #     "keypoints": [
-    #         "nose",
-    #         "left_eye",
-    #         "right_eye",
-    #         "left_ear",
-    #         "right_ear",
-    #         "left_shoulder",
-    #         "right_shoulder",
-    #         "left_elbow",
-    #         "right_elbow",
-    #         "left_wrist",
-    #         "right_wrist",
-    #         "left_hip",
-    #         "right_hip",
-    #         "left_knee",
-    #         "right_knee",
-    #         "left_ankle",
-    #         "right_ankle"
-    #     ],
-    #     "skeleton": [[16,14],[14,12],[17,15],[15,13],[12,13],[6,12],[7,13],[6,7],[6,8],[7,9],[8,10],\
-    #       [9,11],[2,3],[1,2],[1,3], [2,4], [3,5],[4,6],[5,7]]
-    #   }
-
     detections = []
     for image_id in all_bboxes:
       for cls_ind in all_bboxes[image_id]:
@@ -139,14 +83,12 @@ class WHOLEBODY(data.Dataset):
           if score > 0.3:
             self.anns_id += 1
             bbox = dets[:4]
-            # bbox[2] -= bbox[0]
             w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
             bbox[2] -= bbox[0]
             bbox[3] -= bbox[1]
           
             bbox_out  = list(map(self._to_float, bbox))
 
-            # print("bbox_out", bbox_out)
             keypoints = np.concatenate([
               np.array(dets[5:47], dtype=np.float32).reshape(-1, 2), 
               np.ones((21, 1), dtype=np.float32)], axis=1).reshape(63).tolist()
