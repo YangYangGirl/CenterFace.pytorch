@@ -85,11 +85,60 @@ class Debugger(object):
       self.focal_length = 721.5377
       self.W = 1242
       self.H = 375
-    elif num_classes == 1 or dataset == 'pig':              # 自己的数据集
+    elif num_classes == 1 and dataset == 'pig':              # 自己的数据集
       self.names = pig_class_name
-    elif num_classes == 1 or dataset == 'facehp':
+    elif num_classes == 1 and dataset == 'facehp':
       self.names = face_class_name
-    elif num_classes ==1 or dataset == 'wholebody':
+    elif num_classes == 1 and dataset == 'cropbody':
+      whole_body_class_name = ['lefthand']
+      self.names = whole_body_class_name
+      self.num_joints = 21
+      self.edges = [[0, 1], [1, 2], [2, 3], [3, 4], 
+                    [0, 5], [5, 6], [6, 7], [7, 8], 
+                    [0, 9], [9, 10], [10, 11], [11, 12], 
+                    [0, 13], [13, 14], [14, 15], [15, 16], 
+                    [0, 17], [17, 18], [18, 19], [19, 20]]
+      self.ec = [(0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+                 (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+                 (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+                 (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+                 (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255)]
+      # self.colors_hp = [(0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+      #            (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+      #            (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+      #            (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+      #            (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255)]
+      self.colors_hp = [(255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0), 
+      (255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0), 
+      (255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0), 
+      (255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0), 
+      (255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0)]
+    elif num_classes == 1 and dataset == 'wholebody':
+      whole_body_class_name = ['hand']
+      self.names = whole_body_class_name
+      self.num_joints = 21
+      self.edges = [[0, 1], [1, 2], [2, 3], [3, 4], 
+                    [0, 5], [5, 6], [6, 7], [7, 8], 
+                    [0, 9], [9, 10], [10, 11], [11, 12], 
+                    [0, 13], [13, 14], [14, 15], [15, 16], 
+                    [0, 17], [17, 18], [18, 19], [19, 20]]
+      self.ec = [(0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+                 (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+                 (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+                 (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+                 (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255)]
+      # self.colors_hp = [(0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+      #            (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+      #            (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+      #            (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), 
+      #            (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255), (0, 0, 255)]
+      self.colors_hp = [(255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0), 
+      (255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0), 
+      (255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0), 
+      (255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0), 
+      (255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0), (255, 0, 0)]
+    elif num_classes == 2 and dataset == 'wholebody':
+      whole_body_class_name = ['left', 'right']
       self.names = whole_body_class_name
       self.num_joints = 21
       self.edges = [[0, 1], [0, 2], [1, 3], [2, 4], 
@@ -216,30 +265,39 @@ class Debugger(object):
       cv2.circle(self.imgs[img_id], (rect2[0], rect1[1]), int(10 * conf), c, 1)
 
   def add_coco_bbox(self, bbox, cat, conf=1, show_txt=True, img_id='default'): 
-    bbox = np.array(bbox, dtype=np.int32)
+    bbox = np.array(bbox, dtype=np.int64)
     # cat = (int(cat) + 1) % 80
     cat = int(cat)
-    # print('cat', cat, self.names[cat])
     c = self.colors[cat][0][0].tolist()
     if self.theme == 'white':
       c = (255 - np.array(c)).tolist()
     txt = '{}{:.2f}'.format(self.names[cat], conf)
     font = cv2.FONT_HERSHEY_SIMPLEX
     cat_size = cv2.getTextSize(txt, font, 0.5, 2)[0]
-    cv2.rectangle(
-      self.imgs[img_id], (bbox[0], bbox[1]), (bbox[2], bbox[3]), c, 2)
+    cv2.rectangle(self.imgs[img_id], (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), c, 2)
     if show_txt:
-    #   cv2.rectangle(self.imgs[img_id],
-    #                 (bbox[0], bbox[1] - cat_size[1] - 2),
-    #                 (bbox[0] + cat_size[0], bbox[1] - 2), c, -1)
+      cv2.rectangle(self.imgs[img_id],
+                    (bbox[0], bbox[1] - cat_size[1] - 2),
+                    (bbox[0] + cat_size[0], bbox[1] - 2), c, -1)
       cv2.putText(self.imgs[img_id], txt, (bbox[0], bbox[1] - 2), 
                   font, 0.5, (0, 0, 0), thickness=1, lineType=cv2.LINE_AA)
 
   def add_coco_hp(self, points, img_id='default'): 
     points = np.array(points, dtype=np.int32).reshape(self.num_joints, 2)
+    
+    # for person pose edege show
+    for j, e in enumerate(self.edges):
+      if points[e].min() > 0:
+        cv2.line(self.imgs[img_id], (points[e[0], 0], points[e[0], 1]),
+                      (points[e[1], 0], points[e[1], 1]), self.ec[j], 2,
+                      lineType=cv2.LINE_AA)
     for j in range(self.num_joints):
       cv2.circle(self.imgs[img_id],
                  (points[j, 0], points[j, 1]), 3, self.colors_hp[j], -1)
+
+  def add_whole_body_points(self, points, img_id='default'):
+    points = np.array(points, dtype=np.int32).reshape(self.num_joints, 2)
+    
     # for person pose edege show
     for j, e in enumerate(self.edges):
       if points[e].min() > 0:
@@ -247,11 +305,10 @@ class Debugger(object):
                       (points[e[1], 0], points[e[1], 1]), self.ec[j], 2,
                       lineType=cv2.LINE_AA)
 
-  def add_whole_body_points(self, points, img_id='default'):
-    points = np.array(points, dtype=np.int32).reshape(self.num_joints, 2)
     for j in range(self.num_joints):
       cv2.circle(self.imgs[img_id],
-                 (points[j, 0], points[j, 1]), 3, self.colors_hp[j], -1)
+                 (points[j, 0], points[j, 1]), 1, self.colors_hp[j], -1)
+    
     # # for person pose edege show
     # for j, e in enumerate(self.edges):
     #   if points[e].min() > 0:
@@ -366,7 +423,6 @@ class Debugger(object):
     else:
       for i in range(len(dets)):
         if dets[i, 2] > center_thresh:
-          # print('dets', dets[i])
           cat = int(dets[i, -1])
           cl = (self.colors[cat, 0, 0] if self.theme == 'black' else \
                                        255 - self.colors[cat, 0, 0]).tolist()
@@ -531,8 +587,6 @@ coco_class_name = [
 pig_class_name = ['pig']
 
 face_class_name = ['face']
-
-whole_body_class_name = ['hand']
 
 color_list = np.array(
         [

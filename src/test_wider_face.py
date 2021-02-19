@@ -58,7 +58,7 @@ def test_wider_Face(model_path):
     file_list = wider_face_mat['file_list']
 
     # save_path = '../output/1127_bifpn_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4_ebest-1/'
-    save_path = '../output/1212_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4_ebest-1/' 
+    save_path = '../output/1226_mobilev3_10_only_box_obj600_whole_body_crop_32_32_bs24_5e-5_ebest-1/' 
     #save_path = '../output/1119_noattsmall_obj314_face_hp_mobilev3_10_800_800_bs12_5e-4_K600_ebest-1/'
 
 
@@ -69,7 +69,7 @@ def test_wider_Face(model_path):
     debug = 1            # return the detect result without show
     threshold = 0.05 #0.05
     # TASK = 'multi_pose'  
-    input_h, input_w = 800, 800
+    input_h, input_w = 32, 32
     # input_h, intput_w = 640, 640
     # opt = opts().init('--task ctdet --arch dla_34 --dataset facehp --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
     #      MODEL_PATH, debug, threshold, input_h, intput_w).split(' '))
@@ -94,7 +94,7 @@ def test_wider_Face(model_path):
     # opt = opts().init('--task multi_pose --arch mobilev3_10 --head_conv 24 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
     #      save_path, MODEL_PATH, debug, threshold, input_h, input_w).split(' '))
 
-    opt = opts().init('--task multi_pose --arch mobilev3_10 --head_conv 24 --dataset facehp --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
+    opt = opts().init('--task multi_pose_crop --arch mobilev3_10 --not_reg_hp_offset --head_conv 24 --dataset cropbody --exp_id {} --load_model {} --debug {} --vis_thresh {} --input_h {} --input_w {}'.format(
          save_path, MODEL_PATH, debug, threshold, input_h, input_w).split(' '))
     
 
@@ -146,7 +146,7 @@ if __name__ == '__main__':
 
     #MODEL_PATH = '../exp/multi_pose/1119_noattsmall_obj314_face_hp_mobilev3_10_800_800_bs12_5e-4/model_best.pth'
     
-    MODEL_PATH = '../exp/multi_pose/1212_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4/model_best.pth'
+    MODEL_PATH = '../exp/multi_pose_crop/1226_mobilev3_10_only_box_obj600_whole_body_crop_32_32_bs24_5e-5/model_best.pth'
     # MODEL_PATH = '../exp/multi_pose/1127_bifpn_obj600_face_hp_mobilev3_10_800_800_bs8_5e-4/model_best.pth'
 
     # MODEL_PATH = '../exp/multi_pose/1104_nopre_face_hp_mobilev2_10_800_800_sig_bs12_5e-4/model_140.pth'

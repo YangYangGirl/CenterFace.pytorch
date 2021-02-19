@@ -67,8 +67,6 @@ def prefetch_test(opt):
   time_stats = ['tot', 'load', 'pre', 'net', 'dec', 'post', 'merge']
   avg_time_stats = {t: AverageMeter() for t in time_stats}
   for ind, (img_id, pre_processed_images) in enumerate(data_loader):
-    # if ind >= 10:
-    #   break
     ret = detector.run(pre_processed_images)
     results[img_id.numpy().astype(np.int32)[0]] = ret['results']
     Bar.suffix = '[{0}/{1}]|Tot: {total:} |ETA: {eta:} '.format(
@@ -80,7 +78,7 @@ def prefetch_test(opt):
     bar.next()
   bar.finish()
 
-  dataset.run_eval(opt.save_dir, results=results)
+  dataset.run_eval(results, opt.save_dir)
 
 def test(opt):
   os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str

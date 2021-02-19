@@ -138,8 +138,17 @@ class MYeval_righthand:
             g = [g['segmentation'] for g in gt]
             d = [d['segmentation'] for d in dt]
         elif p.iouType == 'bbox':
-            g = [g['bbox'] for g in gt]
-            d = [d['bbox'] for d in dt]
+            g = []
+            d = []
+            for g_ in gt:
+                if g_["righthand_valid"] is True:
+                    g.append(g_['righthand_box'])
+            for d_ in dt:
+                if d_['righthand_valid'] is True:
+                    d.append(d_['righthand_box'])
+
+            # g = [g['bbox'] for g in gt]
+            # d = [d['bbox'] for d in dt]
         else:
             raise Exception('unknown iouType for iou computation')
 
@@ -170,7 +179,7 @@ class MYeval_righthand:
             g = np.array(gt['righthand_kpts'])
             xg = g[0::3]; yg = g[1::3]; vg = g[2::3]
             k1 = np.count_nonzero(vg > 0)
-            bb = gt['bbox']
+            bb = gt['righthand_box']
             x0 = bb[0] - bb[2]; x1 = bb[0] + bb[2] * 2
             y0 = bb[1] - bb[3]; y1 = bb[1] + bb[3] * 2
             for i, dt in enumerate(dts):
@@ -199,8 +208,16 @@ class MYeval_righthand:
         '''
         p = self.params
         if p.useCats:
-            gt = self._gts[imgId,catId]
-            dt = self._dts[imgId,catId]
+            # gt = self._gts[imgId,catId]
+            # dt = self._dts[imgId,catId]
+            gt = []
+            dt = []
+            for g_ in self._gts[imgId,catId]:
+                if g_['righthand_valid'] is True:
+                    gt.append(g_)
+            for d_ in self._dts[imgId,catId]:
+                if d_['righthand_valid'] is True:
+                    dt.append(d_)
         else:
             gt = [_ for cId in p.catIds for _ in self._gts[imgId,cId]]
             dt = [_ for cId in p.catIds for _ in self._dts[imgId,cId]]
@@ -384,7 +401,7 @@ class MYeval_righthand:
         Compute and display summary metrics for evaluation results.
         Note this functin can *only* be applied on the default parameter setting
         '''
-        def _summarize( ap=1, iouThr=None, areaRng='all', maxDets=100 ):
+        def _summarize( ap=1, iouThr=None, areaRng='all', maxDets=100):
             p = self.params
             iStr = ' {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}'
             titleStr = 'Average Precision' if ap == 1 else 'Average Recall'
@@ -416,19 +433,30 @@ class MYeval_righthand:
             print(iStr.format(titleStr, typeStr, iouStr, areaRng, maxDets, mean_s))
             return mean_s
         def _summarizeDets():
-            stats = np.zeros((12,))
-            stats[0] = _summarize(1)
-            stats[1] = _summarize(1, iouThr=.5, maxDets=self.params.maxDets[2])
-            stats[2] = _summarize(1, iouThr=.75, maxDets=self.params.maxDets[2])
-            stats[3] = _summarize(1, areaRng='small', maxDets=self.params.maxDets[2])
-            stats[4] = _summarize(1, areaRng='medium', maxDets=self.params.maxDets[2])
-            stats[5] = _summarize(1, areaRng='large', maxDets=self.params.maxDets[2])
-            stats[6] = _summarize(0, maxDets=self.params.maxDets[0])
-            stats[7] = _summarize(0, maxDets=self.params.maxDets[1])
-            stats[8] = _summarize(0, maxDets=self.params.maxDets[2])
-            stats[9] = _summarize(0, areaRng='small', maxDets=self.params.maxDets[2])
-            stats[10] = _summarize(0, areaRng='medium', maxDets=self.params.maxDets[2])
-            stats[11] = _summarize(0, areaRng='large', maxDets=self.params.maxDets[2])
+            # stats = np.zeros((12,))
+            # stats[0] = _summarize(1)
+            # stats[1] = _summarize(1, iouThr=.5, maxDets=self.params.maxDets[2])
+            # stats[2] = _summarize(1, iouThr=.75, maxDets=self.params.maxDets[2])
+            # stats[3] = _summarize(1, areaRng='small', maxDets=self.params.maxDets[2])
+            # stats[4] = _summarize(1, areaRng='medium', maxDets=self.params.maxDets[2])
+            # stats[5] = _summarize(1, areaRng='large', maxDets=self.params.maxDets[2])
+            # stats[6] = _summarize(0, maxDets=self.params.maxDets[0])
+            # stats[7] = _summarize(0, maxDets=self.params.maxDets[1])
+            # stats[8] = _summarize(0, maxDets=self.params.maxDets[2])
+            # stats[9] = _summarize(0, areaRng='small', maxDets=self.params.maxDets[2])
+            # stats[10] = _summarize(0, areaRng='medium', maxDets=self.params.maxDets[2])
+            # stats[11] = _summarize(0, areaRng='large', maxDets=self.params.maxDets[2])
+            stats = np.zeros((10,))
+            stats[0] = _summarize(1, maxDets=20)
+            stats[1] = _summarize(1, maxDets=20, iouThr=.5)
+            stats[2] = _summarize(1, maxDets=20, iouThr=.75)
+            stats[3] = _summarize(1, maxDets=20, areaRng='medium')
+            stats[4] = _summarize(1, maxDets=20, areaRng='large')
+            stats[5] = _summarize(0, maxDets=20)
+            stats[6] = _summarize(0, maxDets=20, iouThr=.5)
+            stats[7] = _summarize(0, maxDets=20, iouThr=.75)
+            stats[8] = _summarize(0, maxDets=20, areaRng='medium')
+            stats[9] = _summarize(0, maxDets=20, areaRng='large')
             return stats
         def _summarizeKps():
             stats = np.zeros((10,))
@@ -465,9 +493,12 @@ class Params:
         # np.arange causes trouble.  the data point on arange is slightly larger than the true value
         self.iouThrs = np.linspace(.5, 0.95, np.round((0.95 - .5) / .05) + 1, endpoint=True)
         self.recThrs = np.linspace(.0, 1.00, np.round((1.00 - .0) / .01) + 1, endpoint=True)
-        self.maxDets = [1, 10, 100]
-        self.areaRng = [[0 ** 2, 1e5 ** 2], [0 ** 2, 32 ** 2], [32 ** 2, 96 ** 2], [96 ** 2, 1e5 ** 2]]
-        self.areaRngLbl = ['all', 'small', 'medium', 'large']
+        # self.maxDets = [1, 10, 100]
+        # self.areaRng = [[0 ** 2, 1e5 ** 2], [0 ** 2, 32 ** 2], [32 ** 2, 96 ** 2], [96 ** 2, 1e5 ** 2]]
+        # self.areaRngLbl = ['all', 'small', 'medium', 'large']
+        self.maxDets = [20]
+        self.areaRng = [[0 ** 2, 1e5 ** 2], [32 ** 2, 96 ** 2], [96 ** 2, 1e5 ** 2]]
+        self.areaRngLbl = ['all', 'medium', 'large']
         self.useCats = 1
 
     def setKpParams(self):

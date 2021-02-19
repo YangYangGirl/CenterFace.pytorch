@@ -35,7 +35,9 @@ class CropBodyDataset(data.Dataset):
     return border // i
 
   def __getitem__(self, index):
+    #index = 31643
     img_id = self.images[index]
+    #print("img_id", img_id)  # 438861_0
     img = cv2.imread('../data/wider_face/crop_lefthand/imgs/' + img_id[:-1] + '.jpg')
     cls_id = 0
     with open('../data/wider_face/crop_lefthand/labels/' + img_id[:-1] + '.json','r') as load_f:
@@ -44,12 +46,12 @@ class CropBodyDataset(data.Dataset):
      
     origin_img = img.copy()
     result_img = img.copy()
-    cv2.imwrite("origin_body_100.jpg", origin_img)
+    cv2.imwrite("0203_origin_body_100.jpg", origin_img)
 
     for p in pts:
       result_img = cv2.circle(result_img, (int(p[0]), int(p[1])), 1, (0, 0, 255), 0)
     
-    cv2.imwrite("origin_body_100_out.jpg", result_img)
+    cv2.imwrite("0203_origin_body_100_out_new.jpg", result_img)
 
     height, width = img.shape[0], img.shape[1]
     bbox = [0, 0, width, height]
@@ -60,51 +62,78 @@ class CropBodyDataset(data.Dataset):
 
     flipped = False
     if self.split == 'train':
-      if not self.opt.not_rand_crop:
-        # s = s * np.random.choice(np.arange(0.8, 1.1, 0.1))
-        s = s
-        # _border = np.random.randint(128*0.4, 128*1.4)
-        _border = s * np.random.choice([0.1, 0.2, 0.25])
-        w_border = self._get_border(_border, img.shape[1])
-        h_border = self._get_border(_border, img.shape[0])
-        c[0] = np.random.randint(low=w_border, high=img.shape[1] - w_border)
-        c[1] = np.random.randint(low=h_border, high=img.shape[0] - h_border)
-      else:
-        sf = self.opt.scale
-        cf = self.opt.shift
-        c[0] += s * np.clip(np.random.randn()*cf, -2*cf, 2*cf)
-        c[1] += s * np.clip(np.random.randn()*cf, -2*cf, 2*cf)
-        s = s * np.clip(np.random.randn()*sf + 1, 1 - sf, 1 + sf)
-      if np.random.random() < self.opt.aug_rot:
-        rf = self.opt.rotate
-        rot = np.clip(np.random.randn()*rf, -rf*2, rf*2)
+      s = s#s * np.random.choice(np.arange(0.6, 1.4, 0.1))
+      w_border = self._get_border(128, img.shape[1])
+      h_border = self._get_border(128, img.shape[0])
+      c[0] = w_border#img.shape[1]#np.random.randint(low=w_border, high=img.shape[1] - w_border)
+      c[1] = h_border#img.shape[0]#np.random.randint(low=h_border, high=img.shape[0] - h_border)
+      # if not self.opt.not_rand_crop:
+      #   s = s * np.random.choice(np.arange(0.6, 1.4, 0.1))
+      #   w_border = self._get_border(32, img.shape[1])
+      #   h_border = self._get_border(32, img.shape[0])
+      #   c[0] = np.random.randint(low=w_border, high=img.shape[1] - w_border)
+      #   c[1] = np.random.randint(low=h_border, high=img.shape[0] - h_border)
+      # else:
+      #   sf = self.opt.scale
+      #   cf = self.opt.shift
+      #   c[0] += s * np.clip(np.random.randn()*cf, -2*cf, 2*cf)
+      #   c[1] += s * np.clip(np.random.randn()*cf, -2*cf, 2*cf)
+      #   s = s * np.clip(np.random.randn()*sf + 1, 1 - sf, 1 + sf)
+      # if np.random.random() < self.opt.aug_rot:
+      #   rf = self.opt.rotate
+      #   rot = np.clip(np.random.randn()*rf, -rf*2, rf*2)
 
-      if np.random.random() < self.opt.flip:
-        flipped = True
-        img = img[:, ::-1, :]
-        c[0] =  width - c[0] - 1
+      # if True:#not self.opt.not_rand_crop:
+      #   # s = s * np.random.choice(np.arange(0.8, 1.1, 0.1))
+      #   s = s
+      #   # _border = np.random.randint(128*0.4, 128*1.4)
+      #   # _border = s * np.random.choice([0.1, 0.2, 0.25])
+      #   #_border = 0
+      #   w_border = self._get_border(64, img.shape[1])
+      #   h_border = self._get_border(64, img.shape[0])
+      #   c[0] = w_border # np.random.randint(low=w_border, high=img.shape[1] - w_border)
+      #   c[1] = h_border # np.random.randint(low=h_border, high=img.shape[0] - h_border)
+      # else:
+      #   yy = 0
+      #   # sf = self.opt.scale
+      #   # cf = self.opt.shift
+      #   # c[0] += s * np.clip(np.random.randn()*cf, -2*cf, 2*cf)
+      #   # c[1] += s * np.clip(np.random.randn()*cf, -2*cf, 2*cf)
+      #   # s = s * np.clip(np.random.randn()*sf + 1, 1 - sf, 1 + sf)
+      # # if np.random.random() < self.opt.aug_rot:
+      # #  rf = self.opt.rotate
+      # #   rot = np.clip(np.random.randn()*rf, -rf*2, rf*2)
+
+      # #if np.random.random() < self.opt.flip:
+      #   #flipped = True
+      #   #img = img[:, ::-1, :]
+      #   #c[0] =  width - c[0] - 1
 
     trans_input = get_affine_transform(
-      c, s, rot, [self.opt.input_res, self.opt.input_res])
-
+       c, s, rot, [self.opt.input_res, self.opt.input_res])
+    
     inp = cv2.warpAffine(img, trans_input, 
                          (self.opt.input_res, self.opt.input_res),
                          flags=cv2.INTER_LINEAR)
+    cv2.imwrite("inp.jpg", inp)
+    temp_inp = inp.copy()
     inp = (inp.astype(np.float32) / 255.)
-
-    if self.split == 'train' and not self.opt.no_color_aug:                 # 随机进行图片增强
-      color_aug(self._data_rng, inp, self._eig_val, self._eig_vec)
+  
+    # if self.split == 'train' and not self.opt.no_color_aug:                 # 随机进行图片增强
+    #   color_aug(self._data_rng, inp, self._eig_val, self._eig_vec)
 
     inp = (inp - self.mean) / self.std
     inp = inp.transpose(2, 0, 1)
 
     output_res = self.opt.output_res
     num_joints = self.num_joints
+
     trans_output_rot = get_affine_transform(c, s, rot, [output_res, output_res])
     trans_output = get_affine_transform(c, s, 0, [output_res, output_res])
 
     hm = np.zeros((self.num_classes, output_res, output_res), dtype=np.float32)
     hm_hp = np.zeros((num_joints, output_res, output_res), dtype=np.float32)
+    hm_hp_one = np.zeros((1, output_res, output_res), dtype=np.float32)
     dense_kps = np.zeros((num_joints, 2, output_res, output_res), 
                           dtype=np.float32)
     dense_kps_mask = np.zeros((num_joints, output_res, output_res), 
@@ -127,19 +156,27 @@ class CropBodyDataset(data.Dataset):
 
     gt_det = []
       
-    if flipped:
-      bbox[[0, 2]] = width - bbox[[2, 0]] - 1
-      pts[:, 0] = width - pts[:, 0] - 1
-      for e in self.flip_idx:
-        pts[e[0]], pts[e[1]] = pts[e[1]].copy(), pts[e[0]].copy()
+    # if flipped:
+    #   bbox[[0, 2]] = width - bbox[[2, 0]] - 1
+    #   pts[:, 0] = width - pts[:, 0] - 1
+    #   for e in self.flip_idx:
+    #     pts[e[0]], pts[e[1]] = pts[e[1]].copy(), pts[e[0]].copy()
 
+    #print("width", width)
+    #print("height", height)
+    #print("width / output_res", width / output_res)  #[x1, y1, x2, y2]
+    #print("height / output_res", height / output_res)
+    #print("bbox before ", bbox[2:])
     bbox[:2] = affine_transform(bbox[:2], trans_output)
     bbox[2:] = affine_transform(bbox[2:], trans_output)
+    #print("bbox after", bbox[2:])
     bbox = np.clip(bbox, 0, output_res - 1)
     h, w = bbox[3] - bbox[1], bbox[2] - bbox[0]
     if (h > 0 and w > 0) or (rot != 0):
       radius = gaussian_radius((math.ceil(h), math.ceil(w)))
       radius = self.opt.hm_gauss if self.opt.mse_loss else max(0, int(radius)) 
+      radius = 1
+      #print("radius", radius)
       ct = np.array(
         [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)       # 人脸的中心坐标
 
@@ -165,9 +202,10 @@ class CropBodyDataset(data.Dataset):
         hm[cls_id, ct_int[1], ct_int[0]] = 0.9999
         # reg_mask[k] = 0
 
-      hp_radius = gaussian_radius((math.ceil(h), math.ceil(w)))
+      hp_radius = gaussian_radius((math.ceil(h/2), math.ceil(w/2)))
       hp_radius = self.opt.hm_gauss \
                   if self.opt.mse_loss else max(0, int(hp_radius)) 
+      hp_radius = 1
       for j in range(num_joints):
         if pts[j, 2] > 0:
           pts[j, :2] = affine_transform(pts[j, :2], trans_output_rot)
@@ -184,10 +222,13 @@ class CropBodyDataset(data.Dataset):
               draw_dense_reg(dense_kps[j], hm[cls_id], ct_int, 
                             pts[j, :2] - ct_int, radius, is_offset=True)
               draw_gaussian(dense_kps_mask[j], ct_int, radius)
+            #print("pt_int", pt_int)
             draw_gaussian(hm_hp[j], pt_int, hp_radius)                    # 1. 关键点高斯map
+            draw_gaussian(hm_hp_one[0], pt_int, hp_radius)
+            # draw_gaussian(hm_hp[j], pt_int, hp_radius)                    # 1. 关键点高斯map
             # if ann['bbox'][2]*ann['bbox'][3] >= 16.0:                   # 太小的人脸忽略
             #   kps_mask[k, j * 2: j * 2 + 2] = 0
-              # print("==== file_name, index ====", file_name, index)
+            # print("==== file_name, index ====", file_name, index)
       draw_gaussian(hm[cls_id], ct_int, radius)
       gt_det.append([ct[0] - w / 2, ct[1] - h / 2, 
                     ct[0] + w / 2, ct[1] + h / 2, 1] + 
@@ -198,7 +239,34 @@ class CropBodyDataset(data.Dataset):
       reg_mask *= 0
       kps_mask *= 0
 
-    # #  yy add
+
+    #yy add
+    hm_vis = 255 - sum(hm_hp_one) * 255
+    hm_vis = np.clip(hm_vis, 0, 255)
+    hm_vis = np.array(hm_vis, dtype=np.uint8)
+    hm_vis = np.expand_dims(hm_vis, axis=-1)
+    hm_vis = np.repeat(hm_vis, 3, axis=-1)
+    hm_vis = cv2.resize(hm_vis, (temp_inp.shape[0], temp_inp.shape[1])) 
+    masked_image =  hm_vis * 0.9 + temp_inp * 0.1
+    for m in gt_det:
+      each_gt_det = m[:4]
+      each_gt_det = np.array(each_gt_det, dtype=np.int32)
+    cv2.imwrite('0203_fix_radius_whole_body_hm_hp_one_new_add.jpg', masked_image)
+
+    #yy add
+    hm_vis = 255 - sum(hm_hp) * 255
+    hm_vis = np.clip(hm_vis, 0, 255)
+    hm_vis = np.array(hm_vis, dtype=np.uint8)
+    hm_vis = np.expand_dims(hm_vis, axis=-1)
+    hm_vis = np.repeat(hm_vis, 3, axis=-1)
+    hm_vis = cv2.resize(hm_vis, (temp_inp.shape[0], temp_inp.shape[1])) 
+    masked_image =  hm_vis * 0.9 + temp_inp * 0.1
+    for m in gt_det:
+      each_gt_det = m[:4]
+      each_gt_det = np.array(each_gt_det, dtype=np.int32)
+    cv2.imwrite('0203_fix_radius_whole_body_hm_hp_new_add.jpg', masked_image)
+
+    #yy add
     hm_vis = 255 - hm[0] * 255
     hm_vis = np.clip(hm_vis, 0, 255)
     hm_vis = np.array(hm_vis, dtype=np.uint8)
@@ -209,10 +277,10 @@ class CropBodyDataset(data.Dataset):
     for m in gt_det:
       each_gt_det = m[:4]
       each_gt_det = np.array(each_gt_det, dtype=np.int32)
-    cv2.imwrite('debug_whole_body_hm_100.jpg', masked_image)
+    cv2.imwrite('fix_radius_whole_body_hm_100_new.jpg', masked_image)
 
-    ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh,
-           'landmarks': kps, 'hps_mask': kps_mask, 'wight_mask': wight_mask, 'ltrb': ltrb, 'ltrb_mask': ltrb_mask}
+    ret = {'input': inp, 'hm': hm, 'hps': kps, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh,
+           'hps_mask': kps_mask, 'wight_mask': wight_mask, 'ltrb': ltrb, 'ltrb_mask': ltrb_mask}
     if self.opt.dense_hp:
       dense_kps = dense_kps.reshape(num_joints * 2, output_res, output_res)
       dense_kps_mask = dense_kps_mask.reshape(
@@ -226,6 +294,7 @@ class CropBodyDataset(data.Dataset):
       ret.update({'hm_offset': reg})                  # 人脸bbox中心点整数化的偏差
     if self.opt.hm_hp:
       ret.update({'hm_hp': hm_hp})
+      # ret.update({'hm_hp': hm_hp_one})
     if self.opt.reg_hp_offset:
       ret.update({'hp_offset': hp_offset, 'hp_ind': hp_ind, 'hp_mask': hp_mask})
     if self.opt.debug > 0 or not self.split == 'train':

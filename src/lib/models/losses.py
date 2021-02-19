@@ -13,6 +13,42 @@ import torch.nn as nn
 from .utils import _tranpose_and_gather_feat
 import torch.nn.functional as F
 
+class OhemLoss(nn.Module):
+  def __init__(self):
+      super(OhemLoss, self).__init__()
+
+  def forward(self, pred, gt):
+    pos_inds = gt.eq(1).float()
+    neg_inds = gt.lt(1).float()
+
+    neg_weights = torch.pow(1 - gt, 4)
+
+    loss = 0
+
+    pos_loss = - torch.log(pred) * torch.pow(1 - pred, 2) * pos_inds
+    neg_loss = - torch.log(1 - pred) * torch.pow(pred, 2) * neg_weights * neg_inds
+
+    num_pos  = pos_inds.float().sum()
+
+    pos_loss = torch.flatten(pos_loss)
+    neg_loss = torch.flatten(neg_loss)
+
+    pos_loss, pos_idx = torch.sort(pos_loss, descending=True)
+    neg_loss, neg_idx = torch.sort(neg_loss, descending=True)
+
+    neg_pos_ratio = 3
+    keep_num = int(num_pos.item())
+    
+    keep_pos_idx = pos_idx[:keep_num]
+    keep_neg_idx = neg_idx[:keep_num * neg_pos_ratio]
+  
+    keep_pos_loss = pos_loss[keep_pos_idx]
+    keep_neg_loss = neg_loss[keep_neg_idx]
+
+    loss = (keep_pos_loss.sum() + keep_neg_loss.sum())/ (num_pos * (neg_pos_ratio + 1))
+
+    return loss
+
 
 class GIoULoss(nn.Module):
   def __init__(self):
@@ -188,6 +224,7 @@ def _reg_loss(regr, gt_regr, mask, wight_=None):
   regr_loss = regr_loss / (num + 1e-4)
   return regr_loss
 
+
 class FocalLoss(nn.Module):
   '''nn.Module warpper for focal loss'''
   def __init__(self):
@@ -196,6 +233,17 @@ class FocalLoss(nn.Module):
 
   def forward(self, out, target):
     return self.neg_loss(out, target)
+
+
+class SlowNegLoss(nn.Module):
+  '''nn.Module warpper for focal loss'''
+  def __init__(self):
+    super(SlowNegLoss, self).__init__()
+    self._slow_neg_loss = _slow_neg_loss
+
+  def forward(self, out, target):
+    return self._slow_neg_loss(out, target)
+
 
 class RegLoss(nn.Module):
   '''Regression loss for an output tensor

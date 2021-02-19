@@ -13,7 +13,6 @@ from models.decode import ctdet_decode
 from models.utils import flip_tensor
 from utils.image import get_affine_transform
 from utils.post_process import ctdet_post_process
-from utils.debugger import Debugger
 
 from .base_detector import BaseDetector
 
@@ -24,12 +23,11 @@ class CtdetDetector(BaseDetector):
   def process(self, images, return_time=False):
     with torch.no_grad():
       output = self.model(images)[-1]
-      hm = output['hm'].sigmoid_()
+      hm = output['hm']#.sigmoid_()
       wh = output['wh'] if not self.opt.ltrb else None
       ltrb = output['ltrb'] if self.opt.ltrb else None
       reg = output['reg'] if self.opt.reg_offset else None
       if self.opt.flip_test:
-        print("wh.shape", wh.shape)
         hm = (hm[0:1] + flip_tensor(hm[1:2])) / 2
         wh = (wh[0:1] + flip_tensor(wh[1:2])) / 2
         reg = reg[0:1] if reg is not None else None
@@ -68,6 +66,9 @@ class CtdetDetector(BaseDetector):
       for j in range(1, self.num_classes + 1):
         keep_inds = (results[j][:, 4] >= thresh)
         results[j] = results[j][keep_inds]
+
+    for k in results.keys():
+      results[k] = results[k].tolist()
     return results
 
   def debug(self, debugger, images, dets, output, scale=1):
@@ -97,6 +98,6 @@ class CtdetDetector(BaseDetector):
     debugger.add_img(image, img_id='ctdet')
     for j in range(1, self.num_classes + 1):
       for bbox in results[j]:
-        if bbox[4] > self.opt.vis_thresh:
+        if bbox[4] > 0.2:#self.opt.vis_thresh:
           debugger.add_coco_bbox(bbox[:4], j - 1, bbox[4], img_id='ctdet')
     return debugger.return_img(img_id='ctdet')

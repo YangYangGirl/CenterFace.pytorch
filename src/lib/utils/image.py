@@ -63,6 +63,7 @@ def get_affine_transform(center,
 def affine_transform(pt, t):
     new_pt = np.array([pt[0], pt[1], 1.], dtype=np.float32).T
     new_pt = np.dot(t, new_pt)
+    # new_pt = t * new_pt
     return new_pt[:2]
 
 
@@ -176,10 +177,11 @@ def draw_msra_gaussian(heatmap, center, sigma):
   tmp_size = sigma * 3
   mu_x = int(center[0] + 0.5)
   mu_y = int(center[1] + 0.5)
-  w, h = heatmap.shape[0], heatmap.shape[1]
+  h, w = heatmap.shape[0], heatmap.shape[1]
   ul = [int(mu_x - tmp_size), int(mu_y - tmp_size)]
   br = [int(mu_x + tmp_size + 1), int(mu_y + tmp_size + 1)]
   if ul[0] >= h or ul[1] >= w or br[0] < 0 or br[1] < 0:
+    print("!!!!!!! pass draw")
     return heatmap
   size = 2 * tmp_size + 1
   x = np.arange(0, size, 1, np.float32)

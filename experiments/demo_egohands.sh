@@ -1,0 +1,2 @@
+cd ../src
+python demo.py --task ctdet --input_h 800 --input_w 800 --dataset wholebody --head_conv 24 --demo ../src/lib/datasets/dataset/images/test_imgs --arch mobilev3_10 --load_model ../exp/ctdet/0129_egohands_slow_neg_loss_normal_radius_adam_ctdet_mobilev3_10_fpn_only_box_obj600_800_800_bs24_5e-4/model_best.pth

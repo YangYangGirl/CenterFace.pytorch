@@ -8,9 +8,12 @@ from .sample.ctdet import CTDetDataset
 from .sample.multi_pose import MultiPoseDataset
 from .sample.whole_body import WholeBodyDataset
 from .sample.crop_body import CropBodyDataset
+from .sample.egohands import EgohandsDataset
+
 
 from .dataset.coco import COCO
 from .dataset.wholebody import WHOLEBODY
+from .dataset.ctdet_wholebody import CTDetWHOLEBODY
 from .dataset.cropbody import CROPBODY
 from .dataset.pascal import PascalVOC
 from .dataset.kitti import KITTI
@@ -19,6 +22,7 @@ from .dataset.pig import PIG
 from .dataset.pig2 import PIG2
 from .dataset.centerface import FACE
 from .dataset.centerface_hp import FACEHP
+from .dataset.ctdet_egohands import CTDetEGOHANDS
 
 
 dataset_factory = {
@@ -31,12 +35,13 @@ dataset_factory = {
   'face': FACE,
   'facehp': FACEHP,
   'wholebody': WHOLEBODY,
-  'cropbody': CROPBODY
+  'cropbody': CROPBODY,
+  'egohands': CTDetEGOHANDS
 }
 
 _sample_factory = {
   'exdet': EXDetDataset,
-  'ctdet': CTDetDataset,
+  'ctdet': EgohandsDataset, #WholeBodyDataset,#CTDetDataset,
   'ddd': DddDataset,
   'multi_pose': MultiPoseDataset,
   'multi_pose_whole': WholeBodyDataset,

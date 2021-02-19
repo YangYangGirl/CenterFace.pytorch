@@ -13,7 +13,6 @@ from models.decode import multi_pose_decode, centerface_decode
 from models.utils import flip_tensor, flip_lr_off, flip_lr
 from utils.image import get_affine_transform
 from utils.post_process import multi_pose_post_process
-from utils.debugger import Debugger
 
 from .base_detector import BaseDetector
 
@@ -30,8 +29,8 @@ class MultiPoseDetector(BaseDetector):
       if not self.opt.mse_loss:
         output['hm'] = output['hm'].sigmoid_()
 
-      # if self.opt.hm_hp and not self.opt.mse_loss:
-      #   output['hm_hp'] = output['hm_hp'].sigmoid_()
+      if self.opt.hm_hp and not self.opt.mse_loss:
+        output['hm_hp'] = output['hm_hp'].sigmoid_()
 
       reg = output['hm_offset'] if self.opt.reg_offset else None
       # hm_hp = output['hm_hp'] if self.opt.hm_hp else None
@@ -54,13 +53,21 @@ class MultiPoseDetector(BaseDetector):
         hp_offset = hp_offset[0:1] if hp_offset is not None else None
       
       if self.opt.ltrb:
-        dets = centerface_decode(
-          output['hm'], ltrb=output['ltrb'], kps=output['landmarks'],
+        dets = multi_pose_decode(
+          output['hm'], ltrb=output['ltrb'], kps=output['hps'],
           reg=reg, K=self.opt.K)
+
+        # dets = centerface_decode(
+        #   output['hm'], ltrb=output['ltrb'], kps=output['hps'],
+        #   reg=reg, K=self.opt.K)
       else:
-        dets = centerface_decode(
-          output['hm'], wh=output['wh'], kps=output['landmarks'],
+        dets = multi_pose_decode(
+          output['hm'], wh=output['wh'], kps=output['hps'],
           reg=reg, K=self.opt.K)
+
+        # dets = centerface_decode(
+        #   output['hm'], wh=output['wh'], kps=output['hps'],
+        #   reg=reg, K=self.opt.K)
 
       # dets = centerface_decode(
       #   output['hm'], wh=output['wh'], ltrb=output['ltrb'], kps=output['landmarks'],
@@ -77,7 +84,7 @@ class MultiPoseDetector(BaseDetector):
       dets.copy(), [meta['c']], [meta['s']],
       meta['out_height'], meta['out_width'])
     for j in range(1, self.num_classes + 1):
-      dets[0][j] = np.array(dets[0][j], dtype=np.float32).reshape(-1, 15)             # 关键点数+5=15
+      dets[0][j] = np.array(dets[0][j], dtype=np.float32).reshape(-1, 39)             # 关键点数+5=15 17*2+5=39
       dets[0][j][:, :4] /= scale
       dets[0][j][:, 5:] /= scale
     return dets[0]
@@ -87,10 +94,9 @@ class MultiPoseDetector(BaseDetector):
     results[1] = np.concatenate(
         [detection[1] for detection in detections], axis=0).astype(np.float32)
     if self.opt.nms or len(self.opt.test_scales) > 1:
-      print("self.opt.test_scales", self.opt.test_scales)
-      print("nms", self.opt.nms)
       soft_nms_39(results[1], Nt=0.5, method=2)
-    results[1] = results[1].tolist()
+    for k in results.keys():
+      results[k] = results[k].tolist()
     return results
 
   def debug(self, debugger, images, dets, output, scale=1):
@@ -109,16 +115,16 @@ class MultiPoseDetector(BaseDetector):
   
   def show_results(self, debugger, image, results):
     debugger.add_img(image, img_id='multi_pose')
+    num_joints = 17
     for bbox in results[1]:
-      if bbox[4] > 0.51:#self.opt.vis_thresh:
-
-        # debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
+      if bbox[4] > 0.05:#self.opt.vis_thresh:
+        debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
         debugger.add_coco_hp(bbox[5:39], img_id='multi_pose')
 
         debug_image = image
         points = bbox[5:39]
-        points = np.array(points, dtype=np.int32).reshape(5, 2)
-        for j in range(5):
+        points = np.array(points, dtype=np.int32).reshape(17, 2)
+        for j in range(num_joints):
           debug_image = cv2.circle(debug_image,
                     (points[j, 0], points[j, 1]), 3, (0, 0, 255), 1)
         # for person pose edege show
@@ -129,15 +135,13 @@ class MultiPoseDetector(BaseDetector):
         #                   lineType=cv2.LINE_AA)
         cv2.imwrite("yxyy-face-1-0.51.jpg", debug_image)
 
-
-        debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
-        debugger.add_coco_hp(bbox[5:39], img_id='multi_pose')
     debugger.show_all_imgs(pause=self.pause)
 
   def return_results(self, debugger, image, results):
     debugger.add_img(image, img_id='multi_pose')
     for bbox in results[1]:
-      if bbox[4] > 0.02:#self.opt.vis_thresh:
+      if bbox[4] > 0.05:#self.opt.vis_thresh:
+        print(bbox[:4])
         debugger.add_coco_bbox(bbox[:4], 0, bbox[4], img_id='multi_pose')
         debugger.add_coco_hp(bbox[5:39], img_id='multi_pose')
     return debugger.return_img(img_id='multi_pose')

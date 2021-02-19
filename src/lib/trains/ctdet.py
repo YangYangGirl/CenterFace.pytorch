@@ -5,7 +5,8 @@ from __future__ import print_function
 import torch
 import numpy as np
 
-from models.losses import FocalLoss
+from models.losses import OhemLoss
+from models.losses import FocalLoss, SlowNegLoss
 from models.losses import RegL1Loss, RegLoss, NormRegL1Loss, RegWeightedL1Loss
 from models.decode import ctdet_decode
 from models.utils import _sigmoid
@@ -13,11 +14,19 @@ from utils.debugger import Debugger
 from utils.post_process import ctdet_post_process
 from utils.oracle_utils import gen_oracle_map
 from .base_trainer import BaseTrainer
+import cv2
 
 class CtdetLoss(torch.nn.Module):
   def __init__(self, opt):
     super(CtdetLoss, self).__init__()
-    self.crit = torch.nn.MSELoss() if opt.mse_loss else FocalLoss()
+    if opt.slow_neg_loss:
+      self.crit = SlowNegLoss()
+    elif opt.mse_loss:
+      self.crit = torch.nn.MSELoss() 
+    elif opt.ohem_loss:
+      self.crit = OhemLoss()
+    else:
+      self.crit = FocalLoss()
     self.crit_reg = RegL1Loss() if opt.reg_loss == 'l1' else \
               RegLoss() if opt.reg_loss == 'sl1' else None
     self.crit_wh = torch.nn.L1Loss(reduction='sum') if opt.dense_wh else \
@@ -30,8 +39,9 @@ class CtdetLoss(torch.nn.Module):
     hm_loss, wh_loss, off_loss = 0, 0, 0
     for s in range(opt.num_stacks):
       output = outputs[s]
-      if not opt.mse_loss and (opt.arch == 'dla_34' or opt.arch == 'hourglass'):
-        output['hm'] = _sigmoid(output['hm'])
+      # output['hm'] = _sigmoid(output['hm'])
+      # if not opt.mse_loss and (opt.arch == 'res_34' or opt.arch == 'dla_34' or opt.arch == 'hourglass'):
+      #   output['hm'] = _sigmoid(output['hm'])
 
       if opt.eval_oracle_hm:
         output['hm'] = batch['hm']
@@ -47,6 +57,14 @@ class CtdetLoss(torch.nn.Module):
           output['reg'].shape[3], output['reg'].shape[2])).to(opt.device)
 
       hm_loss += self.crit(output['hm'], batch['hm']) / opt.num_stacks            # 热力图损失
+
+      hm_vis = 255 - sum(output['hm'][0].cpu().clone().detach()) * 255
+      hm_vis = np.clip(hm_vis, 0, 255)
+      hm_vis = np.array(hm_vis, dtype=np.uint8)
+      hm_vis = np.expand_dims(hm_vis, axis=-1)
+      hm_vis = np.repeat(hm_vis, 3, axis=-1)
+      cv2.imwrite('training_ctdet_output_hm_mobilev3_10.jpg', hm_vis)
+
       if opt.wh_weight > 0:
         if opt.ltrb:
           wh_loss += self.crit_reg(

@@ -9,7 +9,7 @@ from torch.nn import init
 
 import sys
 sys.path.append('./')
-from ..networks.DCNv2.dcn_v2 import DCN
+from dcn_v2 import DCN
 from ..module.conv import ConvModule
 from ..module.init_weights import xavier_init
 
@@ -514,7 +514,7 @@ class BiFPN(nn.Module):
             p3, p4, p5, p6 = inputs
 
             # p6_in = self.p5_to_p6(p5)
-            p7_in = self.p6_to_p7(p6)
+            # p7_in = self.p6_to_p7(p6)
 
             p3_in = self.p3_down_channel(p3)
             p4_in = self.p4_down_channel(p4)
@@ -597,9 +597,9 @@ class BiFPN(nn.Module):
 
     def _forward(self, inputs):
         if self.first_time:
-            p3, p4, p5 = inputs
+            p3, p4, p5, p6 = inputs
 
-            p6_in = self.p5_to_p6(p5)
+            # p6_in = self.p5_to_p6(p5)
             p7_in = self.p6_to_p7(p6_in)
             if self.use_p8:
                 p8_in = self.p7_to_p8(p7_in)
@@ -607,6 +607,7 @@ class BiFPN(nn.Module):
             p3_in = self.p3_down_channel(p3)
             p4_in = self.p4_down_channel(p4)
             p5_in = self.p5_down_channel(p5)
+            p6_in = self.p6_down_channel(p6)
 
         else:
             if self.use_p8:
@@ -614,24 +615,24 @@ class BiFPN(nn.Module):
                 p3_in, p4_in, p5_in, p6_in, p7_in, p8_in = inputs
             else:
                 # P3_0, P4_0, P5_0, P6_0 and P7_0
-                p3_in, p4_in, p5_in, p6_in, p7_in = inputs
+                p3_in, p4_in, p5_in, p6_in = inputs
 
         if self.use_p8:
             # P8_0 to P8_2
 
             # Connections for P7_0 and P8_0 to P7_1 respectively
-            p7_up = self.conv7_up(self.swish(p7_in + self.p7_upsample(p8_in)))
+            # p7_up = self.conv7_up(self.swish(p7_in + self.p7_upsample(p8_in)))
 
             # Connections for P6_0 and P7_0 to P6_1 respectively
             p6_up = self.conv6_up(self.swish(p6_in + self.p6_upsample(p7_up)))
         else:
             # P7_0 to P7_2
 
-            # Connections for P6_0 and P7_0 to P6_1 respectively
-            p6_up = self.conv6_up(self.swish(p6_in + self.p6_upsample(p7_in)))
-
-        # Connections for P5_0 and P6_1 to P5_1 respectively
-        p5_up = self.conv5_up(self.swish(p5_in + self.p5_upsample(p6_up)))
+            # # Connections for P6_0 and P7_0 to P6_1 respectively
+            # p6_up = self.conv6_up(self.swish(p6_in + self.p6_upsample(p7_in)))
+            
+            # Connections for P5_0 and P6_1 to P5_1 respectively
+             p5_up = self.conv5_up(self.swish(p5_in + self.p5_upsample(p6_up)))
 
         # Connections for P4_0 and P5_1 to P4_1 respectively
         p4_up = self.conv4_up(self.swish(p4_in + self.p4_upsample(p5_up)))
@@ -655,21 +656,27 @@ class BiFPN(nn.Module):
         p6_out = self.conv6_down(
             self.swish(p6_in + p6_up + self.p6_downsample(p5_out)))
 
-        if self.use_p8:
-            # Connections for P7_0, P7_1 and P6_2 to P7_2 respectively
-            p7_out = self.conv7_down(
-                self.swish(p7_in + p7_up + self.p7_downsample(p6_out)))
+        # if self.use_p8:
+        #     # Connections for P7_0, P7_1 and P6_2 to P7_2 respectively
+        #     p7_out = self.conv7_down(
+        #         self.swish(p7_in + p7_up + self.p7_downsample(p6_out)))
 
-            # Connections for P8_0 and P7_2 to P8_2
-            p8_out = self.conv8_down(self.swish(p8_in + self.p8_downsample(p7_out)))
+        #     # Connections for P8_0 and P7_2 to P8_2
+        #     p8_out = self.conv8_down(self.swish(p8_in + self.p8_downsample(p7_out)))
 
-            return p3_out, p4_out, p5_out, p6_out, p7_out, p8_out
-        else:
-            # Connections for P7_0 and P6_2 to P7_2
-            p7_out = self.conv7_down(self.swish(p7_in + self.p7_downsample(p6_out)))
+        #     return p3_out, p4_out, p5_out, p6_out, p7_out, p8_out
+        # else:
+        #     # Connections for P7_0 and P6_2 to P7_2
+        #     p7_out = self.conv7_down(self.swish(p7_in + self.p7_downsample(p6_out)))
 
-            return p3_out, p4_out, p5_out, p6_out, p7_out
+            # return p3_out, p4_out, p5_out, p6_out, p7_out
+        
+        return p3_out, p4_out, p5_out, p6_out
 
+# borrow from yolov4
+class mish(nn.Module):
+    def forward(self, x):
+        return x * torch.nn.functional.softplus(x).tanh()
 
 class hswish(nn.Module):
     def forward(self, x):
@@ -683,9 +690,16 @@ class hsigmoid(nn.Module):
         return out
 
 
+def fill_fc_weights(layers):
+    for m in layers.modules():
+        if isinstance(m, nn.Conv2d):
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+
 class SeModule(nn.Module):
     def __init__(self, in_size, reduction=4):
         super(SeModule, self).__init__()
+        in_size = int(in_size)
         self.se = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(in_size, in_size // reduction, kernel_size=1, stride=1, padding=0, bias=False),
@@ -705,6 +719,9 @@ class Block(nn.Module):
 
     def __init__(self, kernel_size, in_size, expand_size, out_size, nolinear, semodule, stride):
         super(Block, self).__init__()
+        in_size = int(in_size)
+        out_size = int(out_size)
+        expand_size = int(expand_size)
         self.stride = stride
         self.se = semodule
         self.conv1 = nn.Conv2d(in_size, expand_size, kernel_size=1, stride=1, padding=0, bias=False)
@@ -747,102 +764,120 @@ def fill_up_weights(up):
 
 
 class MobileNetV3(nn.Module):
-    def __init__(self, heads, head_conv, n_class=1000, input_size=224, width_mult=1., final_kernel=1, if_bifpn=False, is_pan=False):
+    def __init__(self, heads, head_conv, n_class=1000, input_size=224, width_mult=1., final_kernel=1, activation='hswish', if_bifpn=False, is_pan=True, is_simple=True):
         super(MobileNetV3, self).__init__()
+        self.activation = activation
         self.if_bifpn = if_bifpn
         self.is_pan = is_pan
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1, bias=False)
-        self.convyy = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(16)
-        self.hs1 = hswish()
+        self.is_simple = is_simple
+        self.conv1 = nn.Conv2d(3, int(16 * width_mult), kernel_size=3, stride=2, padding=1, bias=False)
+        self.convyy = nn.Conv2d(int(16 * width_mult), int(16 * width_mult), kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(int(16 * width_mult))
+
+        if self.activation == 'mish':
+            self.hs1 = mish()
+            self.hs2 = mish()
+            self.bneck2 = nn.Sequential(
+            Block(3, 40 * width_mult, 240 * width_mult, 80 * width_mult, mish(), None, 2),
+            Block(3, 80 * width_mult, 200 * width_mult, 80 * width_mult, mish(), None, 1),
+            Block(3, 80 * width_mult, 184 * width_mult, 80 * width_mult, mish(), None, 1),
+            Block(3, 80 * width_mult, 184 * width_mult, 80 * width_mult, mish(), None, 1),
+            Block(3, 80 * width_mult, 480 * width_mult, 112 * width_mult, mish(), SeModule(112 * width_mult), 1),
+            Block(3, 112 * width_mult, 672 * width_mult, 112 * width_mult, mish(), SeModule(112 * width_mult), 1),
+            Block(5, 112 * width_mult, 672 * width_mult, 160 * width_mult, mish(), SeModule(160 * width_mult), 1),
+            )
+            self.bneck3 = nn.Sequential(
+                Block(5, 160 * width_mult, 672, 160 * width_mult, mish(), SeModule(160 * width_mult), 2),
+                Block(5, 160 * width_mult, 960, 160 * width_mult, mish(), SeModule(160 * width_mult), 1),
+            )
+        elif self.activation == 'hswish':
+            self.hs1 = hswish()
+            self.hs2 = hswish()
+            self.bneck2 = nn.Sequential(
+            Block(3, 40 * width_mult, 240 * width_mult, 80 * width_mult, hswish(), None, 2),
+            Block(3, 80 * width_mult, 200 * width_mult, 80 * width_mult, hswish(), None, 1),
+            Block(3, 80 * width_mult, 184 * width_mult, 80 * width_mult, hswish(), None, 1),
+            Block(3, 80 * width_mult, 184 * width_mult, 80 * width_mult, hswish(), None, 1),
+            Block(3, 80 * width_mult, 480 * width_mult, 112 * width_mult, hswish(), SeModule(112 * width_mult), 1),
+            Block(3, 112 * width_mult, 672 * width_mult, 112 * width_mult, hswish(), SeModule(112 * width_mult), 1),
+            Block(5, 112 * width_mult, 672 * width_mult, 160 * width_mult, hswish(), SeModule(160 * width_mult), 1),
+            )
+            self.bneck3 = nn.Sequential(
+                Block(5, 160 * width_mult, 672 * width_mult, 160 * width_mult, hswish(), SeModule(160 * width_mult), 2),
+                Block(5, 160 * width_mult, 960 * width_mult, 160 * width_mult, hswish(), SeModule(160 * width_mult), 1),
+            )
 
         self.bneck0 = nn.Sequential(
             #kernel_size, in_size, expand_size, out_size, nolinear, semodule, stride
-            Block(3, 16, 16, 16, nn.ReLU(inplace=True), None, 1),
-            Block(3, 16, 64, 24, nn.ReLU(inplace=True), None, 2),
-            Block(3, 24, 72, 24, nn.ReLU(inplace=True), None, 1),
+            Block(3, 16 * width_mult, 16 * width_mult, 16 * width_mult, nn.ReLU(inplace=True), None, 1),
+            Block(3, 16 * width_mult, 64 * width_mult, 24 * width_mult, nn.ReLU(inplace=True), None, 2),
+            Block(3, 24 * width_mult, 72 * width_mult, 24 * width_mult, nn.ReLU(inplace=True), None, 1),
         )
-        self.bneck1 = nn.Sequential(
-            Block(5, 24, 72, 40, nn.ReLU(inplace=True), SeModule(40), 2),
-            Block(5, 40, 120, 40, nn.ReLU(inplace=True), SeModule(40), 1),
-            Block(5, 40, 120, 40, nn.ReLU(inplace=True), SeModule(40), 1),
-        )
-        self.bneck2 = nn.Sequential(
-            Block(3, 40, 240, 80, hswish(), None, 2),
-            Block(3, 80, 200, 80, hswish(), None, 1),
-            Block(3, 80, 184, 80, hswish(), None, 1),
-            Block(3, 80, 184, 80, hswish(), None, 1),
-            Block(3, 80, 480, 112, hswish(), SeModule(112), 1),
-            Block(3, 112, 672, 112, hswish(), SeModule(112), 1),
-            Block(5, 112, 672, 160, hswish(), SeModule(160), 1),
-        )
-        self.bneck3 = nn.Sequential(
-            Block(5, 160, 672, 160, hswish(), SeModule(160), 2),
-            Block(5, 160, 960, 160, hswish(), SeModule(160), 1),
-        )
-        self.conv2 = nn.Conv2d(160, 960, kernel_size=1, stride=1, padding=0, bias=False)
-        self.bn2 = nn.BatchNorm2d(960)
-        self.hs2 = hswish()
 
-        self.ida_up = IDAUp(24, [24, 40, 160, 960],
+        self.bneck1 = nn.Sequential(
+            Block(5, 24 * width_mult, 72 * width_mult, 40 * width_mult, nn.ReLU(inplace=True), SeModule(40 * width_mult), 2),
+            Block(5, 40 * width_mult, 120 * width_mult, 40 * width_mult, nn.ReLU(inplace=True), SeModule(40 * width_mult), 1),
+            Block(5, 40 * width_mult, 120 * width_mult, 40 * width_mult, nn.ReLU(inplace=True), SeModule(40 * width_mult), 1),
+        )
+        
+        self.conv2 = nn.Conv2d(int(160 * width_mult), int(960 * width_mult), kernel_size=1, stride=1, padding=0, bias=False)
+        self.bn2 = nn.BatchNorm2d(int(960 * width_mult))
+        
+        channel_list = [int(c * width_mult) for c in [24, 40, 160, 960]]
+        self.ida_up = IDAUp(int(24 * width_mult), channel_list,
                             [2 ** i for i in range(4)])
 
         if self.if_bifpn:
-            self.bifpn = BiFPN(24, [24, 40, 160, 960])
+            self.bifpn = BiFPN(int(24 * width_mult), channel_list)
         if self.is_pan:
-            self.pan = PAN([24, 40, 160, 960], 24, 4)
+            self.pan = PAN(channel_list, int(24 * width_mult), 4)
 
         self.heads = heads
         for head in self.heads:
             classes = self.heads[head]
-            if head == 'hm':
-                fc = nn.Sequential(
-                    nn.Conv2d(head_conv, classes,
-                              kernel_size=1, stride=1,
-                              padding=0, bias=True),
-                    nn.Sigmoid()
-                )
+            if head_conv > 0:
+              fc = nn.Sequential(
+                  nn.Conv2d(int(24 * width_mult), head_conv,
+                    kernel_size=3, padding=1, bias=True),
+                  nn.ReLU(inplace=True),
+                  nn.Conv2d(head_conv, classes, 
+                    kernel_size=final_kernel, stride=1, 
+                    padding=final_kernel // 2, bias=True))
+              if 'hm' in head:
+                fc[-1].bias.data.fill_(-2.19)
+              else:
+                fill_fc_weights(fc)
             else:
-                fc = nn.Conv2d(head_conv, classes,
-                              kernel_size=1, stride=1,
-                              padding=0, bias=True)
-            # if 'hm' in head:
-            #     fc.bias.data.fill_(-2.19)
-            # else:
-            #     nn.init.normal_(fc.weight, std=0.001)
-            #     nn.init.constant_(fc.bias, 0)
+              fc = nn.Conv2d(int(24 * width_mult), classes, 
+                  kernel_size=final_kernel, stride=1, 
+                  padding=final_kernel // 2, bias=True)
+              if 'hm' in head:
+                fc.bias.data.fill_(-2.19)
+              else:
+                fill_fc_weights(fc)
             self.__setattr__(head, fc)
-        
-    def init_params(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                init.kaiming_normal_(m.weight, mode='fan_out')
-                if m.bias is not None:
-                    init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                init.constant_(m.weight, 1)
-                init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                init.normal_(m.weight, std=0.001)
-                if m.bias is not None:
-                    init.constant_(m.bias, 0)
+
 
     def forward(self, x):
-        # out = self.hs1(self.convyy(self.bn1(self.conv1(x))))
-
         out = self.hs1(self.bn1(self.conv1(x)))
         out0 = self.bneck0(out)
         out1 = self.bneck1(out0)
         out2 = self.bneck2(out1)
         out3 = self.bneck3(out2)
         out3 = self.hs2(self.bn2(self.conv2(out3)))
+
         out = [out0, out1, out2, out3]
 
         y = []
         for i in range(4):
             y.append(out[i].clone())
 
-        if self.if_bifpn:
+        if self.is_simple:
+            z = self.pan(y)
+            ret = {}
+            for head in self.heads:
+                ret[head] = self.__getattr__(head)(z[0])
+        elif self.if_bifpn:
             z = self.bifpn(y)
             ret = {}
             for head in self.heads:
@@ -863,5 +898,6 @@ class MobileNetV3(nn.Module):
     
 def get_mobilev3_pose_net(num_layers, heads, head_conv=160):
   model = MobileNetV3(heads, head_conv, width_mult=1.0)
+#   model = MobileNetV3(heads, head_conv, width_mult=0.75)
   
   return model

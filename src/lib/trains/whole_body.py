@@ -4,10 +4,11 @@ from __future__ import print_function
 
 import torch
 import numpy as np
+import cv2
 
 from models.losses import FocalLoss, RegL1Loss, RegLoss, RegWeightedL1Loss, GIoULoss
 from models.decode import multi_pose_decode
-from models.utils import _sigmoid, flip_tensor, flip_lr_off, flip_lr
+from models.utils import _sigmoid, flip_tensor, flip_lr_off, flip_lr#, clamp_nosigmoid
 from utils.debugger import Debugger
 from utils.post_process import multi_pose_post_process
 from utils.oracle_utils import gen_oracle_map
@@ -32,11 +33,12 @@ class WholeBodyLoss(torch.nn.Module):
     lm_loss, off_loss, hm_hp_loss, hp_offset_loss = 0, 0, 0, 0
     for s in range(opt.num_stacks):
       output = outputs[s]
-      output['hm'] = _sigmoid(output['hm'])
-      # if not opt.mse_loss:
-      #     output['hm'] = _sigmoid(output['hm'])
+      # output['hm'] = _sigmoid(output['hm'])
+      if not opt.mse_loss:
+          output['hm'] = _sigmoid(output['hm'])
       # if not opt.mse_loss and (opt.arch == 'dla_34' or opt.arch == 'mobilev2_10'):
       #   output['hm'] = _sigmoid(output['hm'])
+
       if opt.hm_hp and not opt.mse_loss:
         output['hm_hp'] = _sigmoid(output['hm_hp'])
       
@@ -81,40 +83,70 @@ class WholeBodyLoss(torch.nn.Module):
                                  batch['dense_hps'] * batch['dense_hps_mask']) / 
                                  mask_weight) / opt.num_stacks
       else:
-        lm_loss += self.crit_kp(output['landmarks'], batch['hps_mask'],               # 4. 关节点的偏移
-                                batch['ind'], batch['landmarks']) / opt.num_stacks
+        lm_loss += self.crit_kp(output['hps'], batch['hps_mask'],               # 4. 关节点的偏移
+                                batch['ind'], batch['hps']) / opt.num_stacks
 
       if opt.reg_hp_offset and opt.off_weight > 0:                              # 关节点的中心偏移
         hp_offset_loss += self.crit_reg(
           output['hp_offset'], batch['hp_mask'],
           batch['hp_ind'], batch['hp_offset']) / opt.num_stacks
       if opt.hm_hp and opt.hm_hp_weight > 0:                                    # 关节点的热力图
+        # import pdb; pdb.set_trace()
+        # hm_hp_loss += self.crit(
+        #   output['hm_hp'], batch['hm_hp']) / opt.num_stacks
+
+        # import pdb; pdb.set_trace()  
+        hm_vis = 255 - sum(output['hm_hp'][0].cpu().clone().detach()) * 255
+        hm_vis = np.clip(hm_vis, 0, 255)
+        hm_vis = np.array(hm_vis, dtype=np.uint8)
+        hm_vis = np.expand_dims(hm_vis, axis=-1)
+        hm_vis = np.repeat(hm_vis, 3, axis=-1)
+        # import pdb; pdb.set_trace()
+        cv2.imwrite('0104_training_output_hm_hp_sig_clamp_21_mobilev3_10.jpg', hm_vis)
+
+        hm_vis = 255 - sum(batch['hm_hp'][0].cpu().clone().detach()) * 255
+        hm_vis = np.clip(hm_vis, 0, 255)
+        hm_vis = np.array(hm_vis, dtype=np.uint8)
+        hm_vis = np.expand_dims(hm_vis, axis=-1)
+        hm_vis = np.repeat(hm_vis, 3, axis=-1)
+        # import pdb; pdb.set_trace()
+        cv2.imwrite('0104_training_label_hm_hp_sig_clamp_21_mobilev3_10.jpg', hm_vis)
+
+        # # import pdb; pdb.set_trace()
+        # print(output['hm_hp'].shape)
+        # hm_vis = 255 - output['hm_hp'][0][0].cpu().clone().detach() * 255
+        # hm_vis = np.clip(hm_vis, 0, 255)
+        # hm_vis = np.array(hm_vis, dtype=np.uint8)
+        # hm_vis = np.expand_dims(hm_vis, axis=-1)
+        # hm_vis = np.repeat(hm_vis, 3, axis=-1)
+        # print(hm_vis.shape)
+        # # import pdb; pdb.set_trace()
+        # cv2.imwrite('training_output_hm_hp_one.jpg', hm_vis)
+
+        # print(batch['hm_hp'].shape)
+        # hm_vis = 255 - batch['hm_hp'][0][0].cpu().clone().detach() * 255
+        # hm_vis = np.clip(hm_vis, 0, 255)
+        # hm_vis = np.array(hm_vis, dtype=np.uint8)
+        # hm_vis = np.expand_dims(hm_vis, axis=-1)
+        # hm_vis = np.repeat(hm_vis, 3, axis=-1)
+        # # import pdb; pdb.set_trace()
+        # print(hm_vis.shape)
+        # cv2.imwrite('training_label_hm_hp_one.jpg', hm_vis)
+
         hm_hp_loss += self.crit_hm_hp(
           output['hm_hp'], batch['hm_hp']) / opt.num_stacks
 
+        # hm_hp_loss += self.crit_hm_hp(
+        #   output['hm_hp'][0][0], batch['hm_hp'][0][0]) / opt.num_stacks
 
-    # loss = opt.hm_weight * hm_loss + opt.wh_weight * wh_loss + \
-    #        opt.off_weight * off_loss + opt.lm_weight * lm_loss
-    
-    # loss_stats = {'loss': loss, 'hm_loss': hm_loss, 'lm_loss': lm_loss,
-    #               'wh_loss': wh_loss, 'off_loss': off_loss}
-    # return loss, loss_stats
-
-    # loss = opt.hm_weight * off_loss + opt.lm_weight * lm_loss
-    
-    # loss_stats = {'loss': loss, 'hm_loss': hm_loss, 'lm_loss': lm_loss,
-    #               'wh_loss': wh_loss, 'off_loss': off_loss}
-    # return loss, loss_stats
 
     loss = opt.hm_weight * hm_loss + opt.wh_weight * wh_loss + \
            opt.off_weight * off_loss + opt.lm_weight * lm_loss + opt.hm_hp_weight * hm_hp_loss + \
            opt.off_weight * hp_offset_loss
-    
-    # print("hm_loss ", hm_loss, "wh_loss", wh_loss, "off_loss", off_loss, "lm_loss", lm_loss, "hm_hp_loss", hm_hp_loss\
-    # , "hp_offset_loss", hp_offset_loss)
-
     loss_stats = {'loss': loss, 'hm_loss': hm_loss, 'lm_loss': lm_loss, 'hm_hp_loss': hm_hp_loss, 
-                  'hp_offset_loss': hp_offset_loss, 'wh_loss': wh_loss, 'off_loss': off_loss}
+                'hp_offset_loss': hp_offset_loss, 'wh_loss': wh_loss, 'off_loss': off_loss}
+    
+
     return loss, loss_stats
 
 class WholeBodyTrainer(BaseTrainer):
@@ -122,7 +154,6 @@ class WholeBodyTrainer(BaseTrainer):
     super( WholeBodyTrainer, self).__init__(opt, model, optimizer=optimizer)
   
   def _get_losses(self, opt):
-    # loss_states = ['loss', 'hm_loss', 'lm_loss', 'wh_loss', 'off_loss']
     loss_states = ['loss', 'hm_loss', 'lm_loss', 'hm_hp_loss', 'hp_offset_loss', 'wh_loss', 'off_loss']
     loss = WholeBodyLoss(opt)
     return loss_states, loss

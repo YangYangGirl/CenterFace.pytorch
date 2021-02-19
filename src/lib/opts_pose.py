@@ -157,21 +157,23 @@ class opts(object):
     self.parser.add_argument('--mse_loss', action='store_true',
                              help='use mse loss or focal loss to train '
                                   'keypoint heatmaps.')
+    self.parser.add_argument('--ohem_loss', action='store_true',
+                             help='use ohem loss to train '
+                                  'keypoint heatmaps.')
+    self.parser.add_argument('--slow_neg_loss', action='store_true',
+                             help='use slow neg loss to train '
+                                  'keypoint heatmaps.')
+    self.parser.add_argument('--hm_gauss', type=float, default=0.5, 
+                             help='the radius gaussion.')
     
     # ctdet
     self.parser.add_argument('--reg_loss', default='sl1',
                              help='regression loss: sl1 | l1 | l2')
-    # self.parser.add_argument('--hm_weight', type=float, default=1,
-    #                          help='loss weight for keypoint heatmaps.')
-    # self.parser.add_argument('--off_weight', type=float, default=1,
-    #                          help='loss weight for keypoint local offsets.')
-    # self.parser.add_argument('--wh_weight', type=float, default=0.1,
-    #                          help='loss weight for bounding box size.')
-    self.parser.add_argument('--hm_weight', type=float, default=0,
+    self.parser.add_argument('--hm_weight', type=float, default=1,
                              help='loss weight for keypoint heatmaps.')
-    self.parser.add_argument('--off_weight', type=float, default=0,
+    self.parser.add_argument('--off_weight', type=float, default=1,
                              help='loss weight for keypoint local offsets.')
-    self.parser.add_argument('--wh_weight', type=float, default=0,
+    self.parser.add_argument('--wh_weight', type=float, default=0.1,
                              help='loss weight for bounding box size.')
 
     # multi_pose
@@ -217,7 +219,7 @@ class opts(object):
     # exdet
     self.parser.add_argument('--agnostic_ex', action='store_true',
                              help='use category agnostic extreme points.')
-    self.parser.add_argument('--scores_thresh', type=float, default=0.1,
+    self.parser.add_argument('--scores_thresh', type=float, default=0.05,
                              help='threshold for extreme point heatmap.')
     self.parser.add_argument('--center_thresh', type=float, default=0.1,
                              help='threshold for centermap.')
@@ -366,9 +368,22 @@ class opts(object):
 
   def init(self, args=''):
     default_dataset_info = {
-      'ctdet': {'default_resolution': [512, 512], 'num_classes': 1,
+      # 'ctdet': {'default_resolution': [800, 800], 'num_classes': 1,
+      #           'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225],
+      #           'dataset': 'wholebody'},
+      'ctdet': {'default_resolution': [576, 576], 'num_classes': 1,
                 'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225],
-                'dataset': 'pig'},
+                'dataset': 'wholebody'},
+      # 'ctdet': {'default_resolution': [384, 384], 'num_classes': 1,
+      #           'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225],
+      #           'dataset': 'wholebody'},
+      # 'ctdet': {'default_resolution': [256, 256], 'num_classes': 1,
+      #           'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225],
+      #           'dataset': 'wholebody'},
+      # 'ctdet': {'default_resolution': [224, 224], 'num_classes': 1,
+      #           'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225],
+      #           'dataset': 'wholebody'},
+
     # 'ctdet': {'default_resolution': [512, 512], 'num_classes': 1,
     #           'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
     #           'dataset': 'coco'},
@@ -398,6 +413,17 @@ class opts(object):
         # 'default_resolution': [640, 640], 'num_classes': 1,
         # 'default_resolution': [480, 640], 'num_classes': 1,
         'default_resolution': [800, 800], 'num_classes': 1,
+        'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
+        'dataset': 'wholebody', 'num_joints': 21,
+        'flip_idx': []},
+
+      'multi_pose_crop': {
+        # 'default_resolution': [320, 320], 'num_classes': 1, 
+        # 'default_resolution': [512, 512], 'num_classes': 1, 
+        # 'default_resolution': [640, 640], 'num_classes': 1,
+        # 'default_resolution': [480, 640], 'num_classes': 1,
+        # 'default_resolution': [800, 800], 'num_classes': 1,
+        'default_resolution': [64, 64], 'num_classes': 1,
         'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
         'dataset': 'wholebody', 'num_joints': 21,
         'flip_idx': []},

@@ -29,15 +29,15 @@ class MultiPoseLoss(torch.nn.Module):
   def forward(self, outputs, batch):
     opt = self.opt
     hm_loss, wh_loss, off_loss = 0, 0, 0
-    lm_loss, off_loss, hm_hp_loss, hp_offset_loss = 0, 0, 0, 0
+    lm_loss, hm_hp_loss, hp_offset_loss = 0, 0, 0
     for s in range(opt.num_stacks):
       output = outputs[s]
-      # if not opt.mse_loss:
-      #     output['hm'] = _sigmoid(output['hm'])
+      if not opt.mse_loss:
+          output['hm'] = _sigmoid(output['hm'])
       # if not opt.mse_loss and (opt.arch == 'dla_34' or opt.arch == 'mobilev2_10'):
       #   output['hm'] = _sigmoid(output['hm'])
-      # if opt.hm_hp and not opt.mse_loss:
-      #   output['hm_hp'] = _sigmoid(output['hm_hp'])
+      if opt.hm_hp and not opt.mse_loss:
+        output['hm_hp'] = _sigmoid(output['hm_hp'])
       
       if opt.eval_oracle_hmhp:
         output['hm_hp'] = batch['hm_hp']
@@ -80,22 +80,28 @@ class MultiPoseLoss(torch.nn.Module):
                                  batch['dense_hps'] * batch['dense_hps_mask']) / 
                                  mask_weight) / opt.num_stacks
       else:
-        lm_loss += self.crit_kp(output['landmarks'], batch['hps_mask'],               # 4. 关节点的偏移
-                                batch['ind'], batch['landmarks']) / opt.num_stacks
+        lm_loss += self.crit_kp(output['hps'], batch['hps_mask'],               # 4. 关节点的偏移
+                                batch['ind'], batch['hps']) / opt.num_stacks
 
-      # if opt.reg_hp_offset and opt.off_weight > 0:                              # 关节点的中心偏移
-      #   hp_offset_loss += self.crit_reg(
-      #     output['hp_offset'], batch['hp_mask'],
-      #     batch['hp_ind'], batch['hp_offset']) / opt.num_stacks
-      # if opt.hm_hp and opt.hm_hp_weight > 0:                                    # 关节点的热力图
-      #   hm_hp_loss += self.crit_hm_hp(
-      #     output['hm_hp'], batch['hm_hp']) / opt.num_stacks
+      if opt.reg_hp_offset and opt.off_weight > 0:                              # 关节点的中心偏移
+        hp_offset_loss += self.crit_reg(
+          output['hp_offset'], batch['hp_mask'],
+          batch['hp_ind'], batch['hp_offset']) / opt.num_stacks
+
+      if opt.hm_hp and opt.hm_hp_weight > 0:                                    # 关节点的热力图
+        hm_hp_loss += self.crit_hm_hp(
+          output['hm_hp'], batch['hm_hp']) / opt.num_stacks
 
     loss = opt.hm_weight * hm_loss + opt.wh_weight * wh_loss + \
-           opt.off_weight * off_loss + opt.lm_weight * lm_loss
+           opt.off_weight * off_loss + opt.lm_weight * lm_loss + opt.hm_hp_weight * hm_hp_loss + \
+           opt.off_weight * hp_offset_loss
+    loss_stats = {'loss': loss, 'hm_loss': hm_loss, 'wh_loss': wh_loss, 'off_loss': off_loss, 'lm_loss': lm_loss,
+                   'hm_hp_loss': hm_hp_loss, 'hp_offset_loss': hp_offset_loss}
+
+    # loss = opt.hm_weight * hm_loss + opt.wh_weight * wh_loss + \
+    #        opt.off_weight * off_loss #+ opt.lm_weight * lm_loss
+    # loss_stats = {'loss': loss, 'hm_loss': hm_loss, 'wh_loss': wh_loss, 'off_loss': off_loss}
     
-    loss_stats = {'loss': loss, 'hm_loss': hm_loss, 'lm_loss': lm_loss,
-                  'wh_loss': wh_loss, 'off_loss': off_loss}
     return loss, loss_stats
 
 class MultiPoseTrainer(BaseTrainer):
@@ -103,7 +109,8 @@ class MultiPoseTrainer(BaseTrainer):
     super(MultiPoseTrainer, self).__init__(opt, model, optimizer=optimizer)
   
   def _get_losses(self, opt):
-    loss_states = ['loss', 'hm_loss', 'lm_loss', 'wh_loss', 'off_loss']
+    loss_states = ['loss', 'hm_loss', 'wh_loss', 'off_loss', 'lm_loss', 'hm_hp_loss', 'hp_offset_loss'] #, 'lm_loss']
+    # loss_states = ['loss', 'hm_loss', 'wh_loss', 'off_loss'] #, 'lm_loss']
     loss = MultiPoseLoss(opt)
     return loss_states, loss
 

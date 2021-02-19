@@ -11,12 +11,15 @@ import time
 # from opts import opts
 from opts_pose import opts
 from detectors.detector_factory import detector_factory
+from datasets.dataset_factory import get_dataset
 
 image_ext = ['jpg', 'jpeg', 'png', 'webp']
 video_ext = ['mp4', 'mov', 'avi', 'mkv']
 time_stats = ['tot', 'load', 'pre', 'net', 'dec', 'post', 'merge']
 
 def demo(opt):
+  Dataset = get_dataset(opt.dataset, opt.task)
+  opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
   os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
   Detector = detector_factory[opt.task]
   detector = Detector(opt)
@@ -66,5 +69,6 @@ def demo(opt):
 
       
 if __name__ == '__main__':
-  opt = opts().init()
+  # opt = opts().init()
+  opt = opts().parse()
   demo(opt)

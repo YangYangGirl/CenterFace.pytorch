@@ -10,10 +10,9 @@ import torch
 
 from external.nms import soft_nms_39
 from models.decode import multi_pose_decode, centerface_decode
-from models.utils import flip_tensor, flip_lr_off, flip_lr, flip_lr_off_body
+from models.utils import _sigmoid, flip_tensor, flip_lr_off, flip_lr, flip_lr_off_body
 from utils.image import get_affine_transform
 from utils.post_process import whole_body_post_process
-from utils.debugger import Debugger
 
 from .base_detector import BaseDetector
 
@@ -21,17 +20,15 @@ class WholeBodyDetector(BaseDetector):
   def __init__(self, opt):
     super(WholeBodyDetector, self).__init__(opt)
     self.flip_idx = opt.flip_idx
+    
 
   def process(self, images, return_time=False):
     with torch.no_grad():
       torch.cuda.synchronize()
       output = self.model(images)[-1]
-      output['hm'] = output['hm']
-      # if not self.opt.mse_loss:
-      #   output['hm'] = output['hm'].sigmoid_()
-
-      # if self.opt.hm_hp and not self.opt.mse_loss:
-      #   output['hm_hp'] = output['hm_hp'].sigmoid_()
+      output['hm'] = _sigmoid(output['hm'])
+      if self.opt.hm_hp and not self.opt.mse_loss:
+        output['hm_hp'] = _sigmoid(output['hm_hp'])
 
       reg = output['hm_offset'] if self.opt.reg_offset else None
       hm_hp = output['hm_hp'] if self.opt.hm_hp else None
@@ -42,7 +39,7 @@ class WholeBodyDetector(BaseDetector):
       if self.opt.flip_test:
         output['hm'] = (output['hm'][0:1] + flip_tensor(output['hm'][1:2])) / 2
         if self.opt.ltrb:
-          #  output['ltrb'] = (output['wh'][0:1] + flip_tensor(output['wh'][1:2])) / 2
+          #output['ltrb'] = (output['wh'][0:1] + flip_tensor(output['wh'][1:2])) / 2
           print("to do!")
         else:
           output['wh'] = (output['wh'][0:1] + flip_tensor(output['wh'][1:2])) / 2
@@ -76,14 +73,34 @@ class WholeBodyDetector(BaseDetector):
 
   def merge_outputs(self, detections):
     results = {}
-    results[1] = np.concatenate(
-        [detection[1] for detection in detections], axis=0).astype(np.float32)
-    if self.opt.nms or len(self.opt.test_scales) > 1:
-      print("self.opt.test_scales", self.opt.test_scales)
-      print("nms", self.opt.nms)
-      soft_nms_39(results[1], Nt=0.5, method=2)
-    results[1] = results[1].tolist()
+    for j in range(1, self.num_classes + 1):
+      results[j] = np.concatenate(
+        [detection[j] for detection in detections], axis=0).astype(np.float32)
+      if len(self.scales) > 1 or self.opt.nms:
+         soft_nms(results[j], Nt=0.5, method=2)
+    scores = np.hstack(
+      [results[j][:, 4] for j in range(1, self.num_classes + 1)])
+    if len(scores) > self.max_per_image:
+      kth = len(scores) - self.max_per_image
+      thresh = np.partition(scores, kth)[kth]
+      for j in range(1, self.num_classes + 1):
+        keep_inds = (results[j][:, 4] >= thresh)
+        results[j] = results[j][keep_inds]
+
+    for k in results.keys():
+      results[k] = results[k].tolist()
     return results
+
+    # results = {}
+    # results[1] = np.concatenate(
+    #     [detection[1] for detection in detections], axis=0).astype(np.float32)
+    # if self.opt.nms or len(self.opt.test_scales) > 1:
+    #   print("self.opt.test_scales", self.opt.test_scales)
+    #   print("nms", self.opt.nms)
+    #   soft_nms_39(results[1], Nt=0.5, method=2)
+    # for k in results.keys():
+    #   results[k] = results[k].tolist()
+    # return results
 
   def debug(self, debugger, images, dets, output, scale=1):
     dets = dets.detach().cpu().numpy().copy()

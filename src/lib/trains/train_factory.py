@@ -7,6 +7,7 @@ from .ddd import DddTrainer
 from .exdet import ExdetTrainer
 from .multi_pose import MultiPoseTrainer
 from .whole_body import WholeBodyTrainer
+from .crop_body import CropBodyTrainer
 
 train_factory = {
   'exdet': ExdetTrainer, 
@@ -14,5 +15,5 @@ train_factory = {
   'ctdet': CtdetTrainer,
   'multi_pose': MultiPoseTrainer, 
   'multi_pose_whole': WholeBodyTrainer, 
-  'multi_pose_crop': WholeBodyTrainer, 
+  'multi_pose_crop': CropBodyTrainer
 }

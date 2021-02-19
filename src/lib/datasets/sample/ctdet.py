@@ -67,9 +67,12 @@ class CTDetDataset(data.Dataset):
         rf = self.opt.rotate
         rot = np.clip(np.random.randn()*rf, -rf*2, rf*2)
       if np.random.random() < self.opt.flip:
-        flipped = True
-        img = img[:, ::-1, :]
-        c[0] =  width - c[0] - 1
+        if self.num_classes == 2:
+          flipped = False # close flip method
+        elif self.num_classes == 1:
+          flipped = True
+          img = img[:, ::-1, :]
+          c[0] =  width - c[0] - 1
         
 
     trans_input = get_affine_transform(
@@ -110,11 +113,16 @@ class CTDetDataset(data.Dataset):
       ann = anns[k]
       bbox = self._coco_box_to_bbox(ann['bbox'])
       pts = np.array(ann['keypoints'], np.float32).reshape(num_joints, 3)
+
       if 'face' in self.opt.dataset:
         cls_id = int(ann['category_id']) - 1  # widerface
         num_kpts = pts[:, 2].sum()  
       else:
-        cls_id = int(self.cat_ids[ann['category_id']])
+        if self.num_classes == 1:
+          cls_id = int(self.cat_ids[ann['category_id']])
+        elif self.num_classes == 2:
+          cls_id = int(self.cat_ids[ann['category_id']]) # todo
+
       if flipped:
         bbox[[0, 2]] = width - bbox[[2, 0]] - 1
         pts[:, 0] = width - pts[:, 0] - 1

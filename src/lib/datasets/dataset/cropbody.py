@@ -10,12 +10,15 @@ import os
 import cv2
 import math
 import torch.utils.data as data
+import sys
+sys.path.append("../")
+from experiments.wholebody_evaluation.evaluation_wholebody import eval_lefthand_datasets
 
 class CROPBODY(data.Dataset):
   num_classes = 1
   num_joints = 21
   
-  default_resolution = [512, 512]
+  default_resolution = [64, 64]
   mean = np.array([0.40789654, 0.44719302, 0.47026115],
                    dtype=np.float32).reshape(1, 1, 3)
   std  = np.array([0.28863828, 0.27408164, 0.27809835],
@@ -41,7 +44,7 @@ class CROPBODY(data.Dataset):
       self.annot_path = os.path.join(
         self.data_dir, 'annotations', 
         'coco_wholebody_{}_v1.0.json').format(split)
-    self.max_objs = 32
+    self.max_objs = 1
     self._data_rng = np.random.RandomState(123)
     self._eig_val = np.array([0.2141788, 0.01817699, 0.00341571],
                              dtype=np.float32)
@@ -57,7 +60,21 @@ class CROPBODY(data.Dataset):
     if split == 'train':
       f = open('../data/wider_face/crop_lefthand/train.txt', 'r')
       print("successfilly load train.txt")
-      self.images = f.readlines()
+      self.images_ = f.readlines()
+      self.images = []
+      # self.images = ['110_0\n', '110_0\n', '110_0\n', '110_0\n']
+      # self.images = ['438861_0\n', '438861_0\n', '438861_0\n', '438861_0\n', '438861_0\n']
+
+      for i in self.images_:
+        img = cv2.imread('../data/wider_face/crop_lefthand/imgs/' + i[:-1] + '.jpg')
+      
+        with open('../data/wider_face/crop_lefthand/labels/' + i[:-1] + '.json','r') as load_f:
+          pts_json = json.load(load_f)
+          pts = np.array(pts_json['lefthand_keypoints'])
+          height, width = img.shape[0], img.shape[1]
+          if height > 50 and width > 50:
+            self.images.append(i)
+
     else:
       f = open('../data/wider_face/crop_lefthand/val.txt', 'r')
       print("successfilly load val.txt")
@@ -129,14 +146,15 @@ class CROPBODY(data.Dataset):
         self.save_results(results, save_dir)
         print("saving results to ", '{}/results_0_3.json'.format(save_dir))#, self.opt.exp_id))
     coco_dets = self.coco.loadRes('{}/results_0_3.json'.format(save_dir))
-    coco_eval = COCOeval(self.coco, coco_dets, "lefthand_kpts")
-    coco_eval.evaluate()
-    coco_eval.accumulate()
-    coco_eval.summarize()
-    coco_eval = COCOeval(self.coco, coco_dets, "lefthand_box")
-    coco_eval.evaluate()
-    coco_eval.accumulate()
-    coco_eval.summarize()
+    eval_lefthand_datasets('{}/results_0_3.json'.format(save_dir))
+    # coco_eval = COCOeval(self.coco, coco_dets, "lefthand_kpts")
+    # coco_eval.evaluate()
+    # coco_eval.accumulate()
+    # coco_eval.summarize()
+    # coco_eval = COCOeval(self.coco, coco_dets, "lefthand_box")
+    # coco_eval.evaluate()
+    # coco_eval.accumulate()
+    # coco_eval.summarize()
     
 
 

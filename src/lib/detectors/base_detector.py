@@ -88,7 +88,7 @@ class BaseDetector(object):
   def run(self, image_or_path_or_tensor, meta=None):
     load_time, pre_time, net_time, dec_time, post_time = 0, 0, 0, 0, 0
     merge_time, tot_time = 0, 0
-    debugger = Debugger(dataset=self.opt.dataset, ipynb=(self.opt.debug==3),
+    debugger = Debugger(dataset=self.opt.dataset, num_classes=self.opt.num_classes, ipynb=(self.opt.debug==3),
                         theme=self.opt.debugger_theme)
     start_time = time.time()
     pre_processed = False

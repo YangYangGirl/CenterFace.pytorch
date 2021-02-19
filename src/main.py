@@ -25,7 +25,6 @@ def main(opt, qtepoch=[0,]):
   torch.backends.cudnn.benchmark = not opt.not_cuda_benchmark and not opt.test
   Dataset = get_dataset(opt.dataset, opt.task)
   opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
-  print(opt.input_w, "opt.input_w")
   print(opt)
 
   logger = Logger(opt)

@@ -6,6 +6,7 @@ evaluate/heatmap*
 /output_raw
 /exp
 /output
+dataset
 *.mdb
 *.pth
 *.tar

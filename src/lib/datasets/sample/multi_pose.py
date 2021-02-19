@@ -50,15 +50,15 @@ class MultiPoseDataset(data.Dataset):
     img = cv2.imread(img_path)
     img, anns = Data_anchor_sample(img, anns)
 
-    # origin_img = img
-    # cv2.imwrite("origin.jpg", origin_img)
-    # for i, a in enumerate(anns):
-    #     bbox = self._coco_box_to_bbox(a['bbox'])   # [x, y, w, h]
-    #     pts = np.array(a['keypoints'], np.float32).reshape(5, 3)
-    #     origin_img = cv2.rectangle(origin_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
-    #     for p in pts:
-    # 	      origin_img = cv2.circle(origin_img, (p[0], p[1]), 1, (0, 0, 255), 0)
-    # cv2.imwrite("12-12-debug_face_yxyy.jpg", origin_img)
+    origin_img = img
+    cv2.imwrite("origin.jpg", origin_img)
+    for i, a in enumerate(anns):
+        bbox = self._coco_box_to_bbox(a['bbox'])   # [x, y, w, h]
+        pts = np.array(a['keypoints'], np.float32).reshape(self.num_joints, 3)
+        origin_img = cv2.rectangle(origin_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+        for p in pts:
+    	      origin_img = cv2.circle(origin_img, (p[0], p[1]), 1, (0, 0, 255), 0)
+    cv2.imwrite("12-12-debug_face_yxyy.jpg", origin_img)
 
     # # for test the keypoint order
     # img1 = cv2.flip(img,1)
@@ -101,7 +101,6 @@ class MultiPoseDataset(data.Dataset):
     #   add_coco_hp(img1, pts)
     #   cv2.imwrite("debug_face.jpg", img1)#, origin_img)
 
-
     height, width = img.shape[0], img.shape[1]
     c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
     s = max(img.shape[0], img.shape[1]) * 1.0
@@ -133,22 +132,16 @@ class MultiPoseDataset(data.Dataset):
         img = img[:, ::-1, :]
         c[0] =  width - c[0] - 1
 
-    # print("c, s, rot  :", c, "*", s, "*", rot)
     trans_input = get_affine_transform(
       c, s, rot, [self.opt.input_res, self.opt.input_res])
-    # print("trans_input", trans_input)
-
-
     inp = cv2.warpAffine(img, trans_input, 
                          (self.opt.input_res, self.opt.input_res),
                          flags=cv2.INTER_LINEAR)
     inp = (inp.astype(np.float32) / 255.)
-    # print("inp", inp)
-
+    
     if self.split == 'train' and not self.opt.no_color_aug:                 # 随机进行图片增强
       color_aug(self._data_rng, inp, self._eig_val, self._eig_vec)
       # inp = Randaugment(self._data_rng, inp, self._eig_val, self._eig_vec)
-
     inp = (inp - self.mean) / self.std
     inp = inp.transpose(2, 0, 1)
 
@@ -267,7 +260,7 @@ class MultiPoseDataset(data.Dataset):
     cv2.imwrite('debug_face_hm_hp.jpg', masked_image)
 
     ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh,
-           'landmarks': kps, 'hps_mask': kps_mask, 'wight_mask': wight_mask, 'ltrb': ltrb, 'ltrb_mask': ltrb_mask}
+           'hps': kps, 'hps_mask': kps_mask, 'wight_mask': wight_mask, 'ltrb': ltrb, 'ltrb_mask': ltrb_mask}
     if self.opt.dense_hp:
       dense_kps = dense_kps.reshape(num_joints * 2, output_res, output_res)
       dense_kps_mask = dense_kps_mask.reshape(

@@ -10,10 +10,160 @@ _MODEL_URL_DOMAIN = "http://zifuture.com:1000/fs/public_models"
 _MODEL_URL_LARGE = "mbv3large-76f5a50e.pth"
 _MODEL_URL_SMALL = "mbv3small-09ace125.pth"
 
+class FPN(nn.Module):
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 num_outs,
+                 start_level=0,
+                 end_level=-1,
+                 conv_cfg=None,
+                 norm_cfg=None,
+                 activation=None
+                 ):
+        super(FPN, self).__init__()
+        assert isinstance(in_channels, list)
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.num_ins = len(in_channels)
+        self.num_outs = num_outs
+        self.fp16_enabled = False
+
+        if end_level == -1:
+            self.backbone_end_level = self.num_ins
+            assert num_outs >= self.num_ins - start_level
+        else:
+            # if end_level < inputs, no extra level is allowed
+            self.backbone_end_level = end_level
+            assert end_level <= len(in_channels)
+            assert num_outs == end_level - start_level
+        self.start_level = start_level
+        self.end_level = end_level
+        self.lateral_convs = nn.ModuleList()
+
+        for i in range(self.start_level, self.backbone_end_level):
+            l_conv = ConvModule(
+                in_channels[i],
+                out_channels,
+                1,
+                conv_cfg=conv_cfg,
+                norm_cfg=norm_cfg,
+                activation=activation,
+                inplace=False)
+
+            self.lateral_convs.append(l_conv)
+        self.init_weights()
+
+    # default init_weights for conv(msra) and norm in ConvModule
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                xavier_init(m, distribution='uniform')
+
+    def forward(self, inputs):
+        assert len(inputs) == len(self.in_channels)
+
+        # build laterals
+        laterals = [
+            lateral_conv(inputs[i + self.start_level])
+            for i, lateral_conv in enumerate(self.lateral_convs)
+        ]
+
+        # build top-down path
+        used_backbone_levels = len(laterals)
+        for i in range(used_backbone_levels - 1, 0, -1):
+            prev_shape = laterals[i - 1].shape[2:]
+            laterals[i - 1] += F.interpolate(
+                laterals[i], size=prev_shape, mode='bilinear')
+
+        # build outputs
+        outs = [
+            # self.fpn_convs[i](laterals[i]) for i in range(used_backbone_levels)
+            laterals[i] for i in range(used_backbone_levels)
+        ]
+        return tuple(outs)
+
+
+class PAN(FPN):
+    """Path Aggregation Network for Instance Segmentation.
+    This is an implementation of the `PAN in Path Aggregation Network
+    <https://arxiv.org/abs/1803.01534>`_.
+    Args:
+        in_channels (List[int]): Number of input channels per scale.
+        out_channels (int): Number of output channels (used at each scale)
+        num_outs (int): Number of output scales.
+        start_level (int): Index of the start input backbone level used to
+            build the feature pyramid. Default: 0.
+        end_level (int): Index of the end input backbone level (exclusive) to
+            build the feature pyramid. Default: -1, which means the last level.
+        add_extra_convs (bool): Whether to add conv layers on top of the
+            original feature maps. Default: False.
+        extra_convs_on_inputs (bool): Whether to apply extra conv on
+            the original feature from the backbone. Default: False.
+        relu_before_extra_convs (bool): Whether to apply relu before the extra
+            conv. Default: False.
+        no_norm_on_lateral (bool): Whether to apply norm on lateral.
+            Default: False.
+        conv_cfg (dict): Config dict for convolution layer. Default: None.
+        norm_cfg (dict): Config dict for normalization layer. Default: None.
+        act_cfg (str): Config dict for activation layer in ConvModule.
+            Default: None.
+    """
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 num_outs,
+                 start_level=0,
+                 end_level=-1,
+                 conv_cfg=None,
+                 norm_cfg=None,
+                 activation=None):
+        super(PAN,
+              self).__init__(in_channels, out_channels, num_outs, start_level,
+                             end_level, conv_cfg, norm_cfg, activation)
+        self.init_weights()
+
+    def forward(self, inputs):
+        """Forward function."""
+        assert len(inputs) == len(self.in_channels)
+
+        # build laterals
+        laterals = [
+            lateral_conv(inputs[i + self.start_level])
+            for i, lateral_conv in enumerate(self.lateral_convs)
+        ]
+
+        # build top-down path
+        used_backbone_levels = len(laterals)
+        for i in range(used_backbone_levels - 1, 0, -1):
+            prev_shape = laterals[i - 1].shape[2:]
+            laterals[i - 1] += F.interpolate(
+                laterals[i], size=prev_shape, mode='bilinear')
+
+        # build outputs
+        # part 1: from original levels
+        inter_outs = [
+            laterals[i] for i in range(used_backbone_levels)
+        ]
+
+        # part 2: add bottom-up path
+        for i in range(0, used_backbone_levels - 1):
+            prev_shape = inter_outs[i + 1].shape[2:]
+            inter_outs[i + 1] += F.interpolate(inter_outs[i], size=prev_shape, mode='bilinear')
+
+        outs = []
+        outs.append(inter_outs[0])
+        outs.extend([
+            inter_outs[i] for i in range(1, used_backbone_levels)
+        ])
+        return tuple(outs)
+
 class SeModule(nn.Module):
     def __init__(self, in_size, reduction=4):
         super(SeModule, self).__init__()
-
+        in_size = int(in_size)
         self.pool = nn.AdaptiveAvgPool2d(1)
         self.se = nn.Sequential(
             nn.Conv2d(in_size, in_size // reduction, kernel_size=1, stride=1, padding=0, bias=False),
@@ -31,6 +181,8 @@ class SeModule(nn.Module):
 class Block(nn.Module):
     def __init__(self, kernel_size, in_size, expand_size, out_size, nolinear, semodule, stride):
         super(Block, self).__init__()
+        in_size = int(in_size)
+        out_size = int(out_size)
         self.stride = stride
         self.se = semodule
 
@@ -61,27 +213,27 @@ class Block(nn.Module):
 
 
 class Mbv3SmallFast(nn.Module):
-    def __init__(self):
+    def __init__(self, width_mult):
         super(Mbv3SmallFast, self).__init__()
 
         self.keep = [0, 2, 7]
         self.uplayer_shape = [16, 24, 48]
         self.output_channels = 96
 
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(16)
+        self.conv1 = nn.Conv2d(3, int(16 * width_mult), kernel_size=3, stride=2, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(int(16 * width_mult))
         self.hs1 = nn.ReLU(inplace=True)
 
         self.bneck = nn.Sequential(
-            Block(3, 16, 16, 16, nn.ReLU(inplace=True), None, 2),       # 0 *
-            Block(3, 16, 72, 24, nn.ReLU(inplace=True), None, 2),               # 1
-            Block(3, 24, 88, 24, nn.ReLU(inplace=True), None, 1),               # 2 *
-            Block(5, 24, 96, 40, nn.ReLU(inplace=True), SeModule(40), 2),                    # 3
-            Block(5, 40, 240, 40, nn.ReLU(inplace=True), SeModule(40), 1),                   # 4
-            Block(5, 40, 240, 40, nn.ReLU(inplace=True), SeModule(40), 1),                   # 5
-            Block(5, 40, 120, 48, nn.ReLU(inplace=True), SeModule(48), 1),                   # 6
-            Block(5, 48, 144, 48, nn.ReLU(inplace=True), SeModule(48), 1),                   # 7 *
-            Block(5, 48, 288, 96, nn.ReLU(inplace=True), SeModule(96), 2),                   # 8
+            Block(3, 16 * width_mult, 16, 16 * width_mult, nn.ReLU(inplace=True), None, 2),       # 0 *
+            Block(3, 16 * width_mult, 72, 24 * width_mult, nn.ReLU(inplace=True), None, 2),               # 1
+            Block(3, 24 * width_mult, 88, 24 * width_mult, nn.ReLU(inplace=True), None, 1),               # 2 *
+            Block(5, 24 * width_mult, 96, 40 * width_mult, nn.ReLU(inplace=True), SeModule(40  * width_mult), 2),                    # 3
+            Block(5, 40 * width_mult, 240, 40 * width_mult, nn.ReLU(inplace=True), SeModule(40  * width_mult), 1),                   # 4
+            Block(5, 40 * width_mult, 240, 40 * width_mult, nn.ReLU(inplace=True), SeModule(40  * width_mult), 1),                   # 5
+            Block(5, 40 * width_mult, 120, 48 * width_mult, nn.ReLU(inplace=True), SeModule(48  * width_mult), 1),                   # 6
+            Block(5, 48 * width_mult, 144, 48 * width_mult, nn.ReLU(inplace=True), SeModule(48  * width_mult), 1),                   # 7 *
+            Block(5, 48 * width_mult, 288, 96 * width_mult, nn.ReLU(inplace=True), SeModule(96  * width_mult), 2),                   # 8
         )
 
 
@@ -208,13 +360,14 @@ class DBFace(nn.Module):
     def __init__(self, heads, head_conv, n_class=1000, input_size=224, width_mult=1., wide=24, has_ext=False, upmode="UCBA"):
         super(DBFace, self).__init__()
         # define backbone
-        self.bb = Mbv3SmallFast()
+        self.bb = Mbv3SmallFast(width_mult)
 
         # Get the number of branch node channels
         # stride4, stride8, stride16
-        c0, c1, c2 = self.bb.uplayer_shape
-
-        self.conv3 = CBAModule(self.bb.output_channels, wide, kernel_size=1, stride=1, padding=0, bias=False) # s32
+        uplayer_shape  = [int(c * width_mult) for c in self.bb.uplayer_shape]
+        c0, c1, c2 = uplayer_shape
+        
+        self.conv3 = CBAModule(int(self.bb.output_channels * width_mult), wide, kernel_size=1, stride=1, padding=0, bias=False) # s32
         self.connect0 = CBAModule(c0, wide, kernel_size=1)  # s4
         self.connect1 = CBAModule(c1, wide, kernel_size=1)  # s8
         self.connect2 = CBAModule(c2, wide, kernel_size=1)  # s16
@@ -285,8 +438,8 @@ class DBFace(nn.Module):
 
 
 def get_mobilev3fast_pose_net(num_layers, heads, head_conv=24):
-
-  model = DBFace(heads, head_conv, width_mult=1.0)
+#   model = DBFace(heads, head_conv, width_mult=1.0)
+  model = DBFace(heads, head_conv, width_mult=0.75)
 #   model.init_weights()
   
   return model

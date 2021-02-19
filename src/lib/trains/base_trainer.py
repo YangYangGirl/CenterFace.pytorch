@@ -16,15 +16,34 @@ class ModleWithLoss(torch.nn.Module):
     self.loss = loss
   
   def forward(self, batch):
-
-    #m = torch.randn(1, 3, 640, 480).cuda()
-    #m = torch.randn(1, 3, 640, 640).cuda()
-    #m = torch.randn(1, 3, 512, 512).cuda()
+    # print("begin")
+    
     # m = torch.randn(1, 3, 800, 800).cuda()
     # flops, params = profile(self.model, inputs=(m,))
-
     # print("flops:", flops/10e5, " M")
     # print("parameters", params/10e5, " M")
+
+    # m = torch.randn(1, 3, 576, 576).cuda()
+    # flops, params = profile(self.model, inputs=(m,))
+    # print("flops:", flops/10e5, " M")
+    # print("parameters", params/10e5, " M")
+
+    # m = torch.randn(1, 3, 384, 384).cuda()
+    # flops, params = profile(self.model, inputs=(m,))
+    # print("flops:", flops/10e5, " M")
+    # print("parameters", params/10e5, " M")
+
+    # m = torch.randn(1, 3, 256, 256).cuda()
+    # flops, params = profile(self.model, inputs=(m,))
+    # print("flops:", flops/10e5, " M")
+    # print("parameters", params/10e5, " M")
+
+    # m = torch.randn(1, 3, 224, 224).cuda()
+    # flops, params = profile(self.model, inputs=(m,))
+    # print("flops:", flops/10e5, " M")
+    # print("parameters", params/10e5, " M")
+
+    # print("end")
 
     outputs = self.model(batch['input'])
     loss, loss_stats = self.loss(outputs, batch)          # 输入
